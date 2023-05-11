@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "rust_json",
+    "rust_json_derive",
+    "rust_json_test",
+    "rust_json_benchmark"
+]

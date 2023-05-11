@@ -1,0 +1,61 @@
+entity Img {
+    Path: @String
+}
+
+entity Food {
+    Name: String
+    Img: ?Img
+    Price: Int
+}
+
+entity Table {
+    CurOrder: ?Order
+}
+
+entity OrderItem {
+    Food: Food
+    Count: Int
+}
+
+entity Order {
+    Table: Table
+    Closed: Bool
+    Items: [@OrderItem]
+}
+
+api TableOrderAppend(TId: Table.id, FId: Food.Id, Count: Int) effect {
+    CurOrderItems <- TId.Table.CurOrder.Items
+    TheOrderItem <~ CurOrderItems.first{OrderItem.Food.Id == &FId}
+        ?{ TheOrderItem.Count += Count } 
+        :{ CurOrderItems ++ OrderItem(FId.Food, Count) }
+}
+
+api TableOrderRemove(TId: Table.id, FId: Food.Id, Count: Int) effect {
+    CurOrderItems <- TId.Table.CurOrder.Items
+    TheOrderItem <- CurOrderItems.first{OrderItem.Food.Id == &FId} 
+    TheOrderItem.Count == Count 
+        ?{ TheOrderItem.delete }
+        :{ TheOrderItem.Count -= Count }
+}
+
+api TableOrderClear(TId: Table.id, FId: Food.Id) effect {
+    TId.Table.CurOrder.Items.delete
+}
+
+api OrderPrice(OId: Order.Id) -> Int {
+    OId.Order.Items.map{OrderItem.Food.Price * OrderItem.Count}.sum
+}
+
+api TableOrderPrice(TId: Table.Id) -> Int {
+    OrderPrice(TId.Table.CurOrder)
+}
+
+api TableOrderPrice(TId: Table.Id) effect {
+    $pay(TableOrderPrice(TId))
+    TId.Table.CurOrder.Closed = True
+    TId.Table.CurOrder = Order(TId.Table, False, [])
+}
+
+api TableOrders(TId: Table.Id) -> [Order] {
+    Order.filter{Order.Table.Id == TId}
+}

@@ -1,0 +1,16 @@
+[package]
+name = "rust_json_derive"
+version = "0.1.2"
+edition = "2018"
+description = "ToJson and FromJson derive for rust-json"
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+proc_macro = true
+
+[dependencies]
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = "1.0"

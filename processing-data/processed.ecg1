@@ -1,0 +1,20 @@
+vec![table!(entity Img {
+field!(Path:@String),
+}),
+table!(entity Food {
+field!(Name:String),
+field!(Img:?Img),
+field!(Price:Int),
+}),
+table!(entity Table {
+field!(CurOrder:?Order),
+}),
+table!(entity OrderItem {
+field!(Food:Food),
+field!(Count:Int),
+}),
+table!(entity Order {
+field!(Table:Table),
+field!(Closed:Int{0..2}),
+field!(Items:[@OrderItem]),
+})]
