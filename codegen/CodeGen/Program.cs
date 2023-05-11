@@ -635,9 +635,8 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        string basePath = "../../../../../";
-        string parsedJsonPath = Path.Combine(basePath, "processing-data/parsed.ecg2");
-
+        string basePath = "../../processing-data/";
+        string parsedJsonPath = Path.Combine(basePath, "parsed.ecg2");
         List<RawTable> raw = JsonSerializer.Deserialize<List<RawTable>>(File.ReadAllText(parsedJsonPath))!;
 
         Database database = new(raw);
@@ -656,7 +655,6 @@ internal class Program
         foreach (Table table in database.tables)
         {
             _ = table.PrimaryKey;
-            Console.Write($"{table}\n");
         }
         Console.WriteLine("==========");
         foreach (Table table in database.tables)
