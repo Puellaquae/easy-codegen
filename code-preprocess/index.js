@@ -1,9 +1,16 @@
 import { readFileSync, writeFileSync } from "fs";
-import { join } from "path";
+import { join, resolve } from "path";
+import minimist from "minimist";
 
-const basePath = "../processing-data"
-const inFile = join(basePath, "input.ecg");
-const outFile = join(basePath, "processed.ecg1");
+const argv = minimist(process.argv.slice(2));
+
+const basePath = argv["base"] ?? "../processing-data";
+const inFileName = argv["i"] ?? "input.ecg";
+const inFile = join(basePath, inFileName);
+const outFileName = argv["o"] ?? "processed.ecg1";
+const outFile = join(basePath, outFileName);
+
+console.log(`PreProcessing, input: ${resolve(inFile)}`);
 
 let infileData = readFileSync(inFile).toString();
 
@@ -60,3 +67,5 @@ let entitiesBuilder = entities.map(e => e.join("\n")).join(",\n");
 entitiesBuilder = "vec![" + entitiesBuilder + "]";
 
 writeFileSync(outFile, entitiesBuilder);
+
+console.log(`PreProcessing, output: ${resolve(outFile)}`);

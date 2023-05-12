@@ -23,14 +23,14 @@ entity Order {
     Items: [@OrderItem]
 }
 
-api TableOrderAppend(TId: Table.id, FId: Food.Id, Count: Int) effect {
+fn TableOrderAppend(TId: Table.id, FId: Food.Id, Count: Int) {
     CurOrderItems <- TId.Table.CurOrder.Items
     TheOrderItem <~ CurOrderItems.first{OrderItem.Food.Id == &FId}
         ?{ TheOrderItem.Count += Count } 
         :{ CurOrderItems ++ OrderItem(FId.Food, Count) }
 }
 
-api TableOrderRemove(TId: Table.id, FId: Food.Id, Count: Int) effect {
+fn TableOrderRemove(TId: Table.id, FId: Food.Id, Count: Int) {
     CurOrderItems <- TId.Table.CurOrder.Items
     TheOrderItem <- CurOrderItems.first{OrderItem.Food.Id == &FId} 
     TheOrderItem.Count == Count 
@@ -38,24 +38,24 @@ api TableOrderRemove(TId: Table.id, FId: Food.Id, Count: Int) effect {
         :{ TheOrderItem.Count -= Count }
 }
 
-api TableOrderClear(TId: Table.id, FId: Food.Id) effect {
+fn TableOrderClear(TId: Table.id, FId: Food.Id) {
     TId.Table.CurOrder.Items.delete
 }
 
-api OrderPrice(OId: Order.Id) -> Int {
+fn OrderPrice(OId: Order.Id) -> Int {
     OId.Order.Items.map{OrderItem.Food.Price * OrderItem.Count}.sum
 }
 
-api TableOrderPrice(TId: Table.Id) -> Int {
+fn TableOrderPrice(TId: Table.Id) -> Int {
     OrderPrice(TId.Table.CurOrder)
 }
 
-api TableOrderPrice(TId: Table.Id) effect {
+fn TableOrderPrice(TId: Table.Id) {
     $pay(TableOrderPrice(TId))
     TId.Table.CurOrder.Closed = True
     TId.Table.CurOrder = Order(TId.Table, False, [])
 }
 
-api TableOrders(TId: Table.Id) -> [Order] {
+fn TableOrders(TId: Table.Id) -> [Order] {
     Order.filter{Order.Table.Id == TId}
 }

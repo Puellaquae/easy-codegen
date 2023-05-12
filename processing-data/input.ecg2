@@ -1,0 +1,127 @@
+[
+    {
+        "fields": [
+            {
+                "is_array": false,
+                "type": "String",
+                "is_nullable": false,
+                "name": "Path",
+                "is_unique": true,
+                "str_enum": null,
+                "int_range_end": null,
+                "int_range_start": null
+            }
+        ],
+        "name": "Img"
+    },
+    {
+        "fields": [
+            {
+                "type": "String",
+                "is_array": false,
+                "int_range_start": null,
+                "is_unique": false,
+                "str_enum": null,
+                "name": "Name",
+                "int_range_end": null,
+                "is_nullable": false
+            },
+            {
+                "int_range_start": null,
+                "is_unique": false,
+                "is_nullable": true,
+                "int_range_end": null,
+                "name": "Img",
+                "is_array": false,
+                "type": "Img",
+                "str_enum": null
+            },
+            {
+                "str_enum": null,
+                "int_range_start": null,
+                "type": "Int",
+                "is_array": false,
+                "is_unique": false,
+                "int_range_end": null,
+                "name": "Price",
+                "is_nullable": false
+            }
+        ],
+        "name": "Food"
+    },
+    {
+        "name": "Table",
+        "fields": [
+            {
+                "str_enum": null,
+                "is_nullable": true,
+                "is_unique": false,
+                "name": "CurOrder",
+                "int_range_start": null,
+                "is_array": false,
+                "type": "Order",
+                "int_range_end": null
+            }
+        ]
+    },
+    {
+        "name": "OrderItem",
+        "fields": [
+            {
+                "is_array": false,
+                "type": "Food",
+                "int_range_start": null,
+                "str_enum": null,
+                "is_nullable": false,
+                "int_range_end": null,
+                "name": "Food",
+                "is_unique": false
+            },
+            {
+                "is_unique": false,
+                "int_range_end": null,
+                "is_array": false,
+                "int_range_start": null,
+                "str_enum": null,
+                "name": "Count",
+                "type": "Int",
+                "is_nullable": false
+            }
+        ]
+    },
+    {
+        "name": "Order",
+        "fields": [
+            {
+                "type": "Table",
+                "int_range_start": null,
+                "is_array": false,
+                "name": "Table",
+                "is_nullable": false,
+                "is_unique": false,
+                "str_enum": null,
+                "int_range_end": null
+            },
+            {
+                "type": "Int",
+                "is_array": false,
+                "is_nullable": false,
+                "str_enum": null,
+                "is_unique": false,
+                "int_range_end": 2,
+                "int_range_start": 0,
+                "name": "Closed"
+            },
+            {
+                "int_range_end": null,
+                "name": "Items",
+                "is_nullable": false,
+                "str_enum": null,
+                "type": "OrderItem",
+                "is_array": true,
+                "is_unique": true,
+                "int_range_start": null
+            }
+        ]
+    }
+]
