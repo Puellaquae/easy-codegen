@@ -1,127 +1,269 @@
-[
-    {
-        "fields": [
-            {
-                "is_array": false,
-                "type": "String",
-                "is_nullable": false,
-                "name": "Path",
-                "is_unique": true,
-                "str_enum": null,
-                "int_range_end": null,
-                "int_range_start": null
-            }
-        ],
-        "name": "Img"
-    },
-    {
-        "fields": [
-            {
-                "type": "String",
-                "is_array": false,
-                "int_range_start": null,
-                "is_unique": false,
-                "str_enum": null,
-                "name": "Name",
-                "int_range_end": null,
-                "is_nullable": false
-            },
-            {
-                "int_range_start": null,
-                "is_unique": false,
-                "is_nullable": true,
-                "int_range_end": null,
-                "name": "Img",
-                "is_array": false,
-                "type": "Img",
-                "str_enum": null
-            },
-            {
-                "str_enum": null,
-                "int_range_start": null,
-                "type": "Int",
-                "is_array": false,
-                "is_unique": false,
-                "int_range_end": null,
-                "name": "Price",
-                "is_nullable": false
-            }
-        ],
-        "name": "Food"
-    },
-    {
-        "name": "Table",
-        "fields": [
-            {
-                "str_enum": null,
-                "is_nullable": true,
-                "is_unique": false,
-                "name": "CurOrder",
-                "int_range_start": null,
-                "is_array": false,
-                "type": "Order",
-                "int_range_end": null
-            }
-        ]
-    },
-    {
-        "name": "OrderItem",
-        "fields": [
-            {
-                "is_array": false,
-                "type": "Food",
-                "int_range_start": null,
-                "str_enum": null,
-                "is_nullable": false,
-                "int_range_end": null,
-                "name": "Food",
-                "is_unique": false
-            },
-            {
-                "is_unique": false,
-                "int_range_end": null,
-                "is_array": false,
-                "int_range_start": null,
-                "str_enum": null,
-                "name": "Count",
-                "type": "Int",
-                "is_nullable": false
-            }
-        ]
-    },
-    {
-        "name": "Order",
-        "fields": [
-            {
-                "type": "Table",
-                "int_range_start": null,
-                "is_array": false,
-                "name": "Table",
-                "is_nullable": false,
-                "is_unique": false,
-                "str_enum": null,
-                "int_range_end": null
-            },
-            {
-                "type": "Int",
-                "is_array": false,
-                "is_nullable": false,
-                "str_enum": null,
-                "is_unique": false,
-                "int_range_end": 2,
-                "int_range_start": 0,
-                "name": "Closed"
-            },
-            {
-                "int_range_end": null,
-                "name": "Items",
-                "is_nullable": false,
-                "str_enum": null,
-                "type": "OrderItem",
-                "is_array": true,
-                "is_unique": true,
-                "int_range_start": null
-            }
-        ]
-    }
-]
+{
+    "entities": [
+        {
+            "name": "Img",
+            "fields": [
+                {
+                    "int_range_start": null,
+                    "is_array": false,
+                    "int_range_end": null,
+                    "is_nullable": false,
+                    "str_enum": null,
+                    "name": "Path",
+                    "type": "String",
+                    "is_unique": true
+                }
+            ]
+        },
+        {
+            "name": "Food",
+            "fields": [
+                {
+                    "is_unique": false,
+                    "int_range_start": null,
+                    "int_range_end": null,
+                    "str_enum": null,
+                    "is_array": false,
+                    "name": "Name",
+                    "is_nullable": false,
+                    "type": "String"
+                },
+                {
+                    "is_unique": false,
+                    "name": "Img",
+                    "is_array": false,
+                    "str_enum": null,
+                    "int_range_end": null,
+                    "int_range_start": null,
+                    "type": "Img",
+                    "is_nullable": true
+                },
+                {
+                    "is_array": false,
+                    "is_unique": false,
+                    "str_enum": null,
+                    "int_range_end": null,
+                    "is_nullable": false,
+                    "type": "Int",
+                    "name": "Price",
+                    "int_range_start": null
+                }
+            ]
+        },
+        {
+            "name": "Table",
+            "fields": [
+                {
+                    "name": "CurOrder",
+                    "is_unique": false,
+                    "str_enum": null,
+                    "type": "Order",
+                    "is_array": false,
+                    "int_range_start": null,
+                    "is_nullable": true,
+                    "int_range_end": null
+                }
+            ]
+        },
+        {
+            "fields": [
+                {
+                    "name": "Food",
+                    "is_nullable": false,
+                    "type": "Food",
+                    "int_range_end": null,
+                    "is_unique": false,
+                    "is_array": false,
+                    "int_range_start": null,
+                    "str_enum": null
+                },
+                {
+                    "name": "Count",
+                    "is_unique": false,
+                    "is_nullable": false,
+                    "type": "Int",
+                    "int_range_start": null,
+                    "is_array": false,
+                    "int_range_end": null,
+                    "str_enum": null
+                }
+            ],
+            "name": "OrderItem"
+        },
+        {
+            "fields": [
+                {
+                    "is_array": false,
+                    "is_unique": false,
+                    "name": "Table",
+                    "int_range_start": null,
+                    "type": "Table",
+                    "str_enum": null,
+                    "is_nullable": false,
+                    "int_range_end": null
+                },
+                {
+                    "is_array": false,
+                    "str_enum": null,
+                    "is_nullable": false,
+                    "int_range_end": 2,
+                    "name": "Closed",
+                    "type": "Int",
+                    "is_unique": false,
+                    "int_range_start": 0
+                },
+                {
+                    "is_array": true,
+                    "type": "OrderItem",
+                    "is_unique": true,
+                    "is_nullable": false,
+                    "name": "Items",
+                    "int_range_start": null,
+                    "int_range_end": null,
+                    "str_enum": null
+                }
+            ],
+            "name": "Order"
+        }
+    ],
+    "fns": [
+        {
+            "ret_ty": null,
+            "name": "TableOrderAppend",
+            "args": [
+                {
+                    "ty": " Table.id",
+                    "name": "TId"
+                },
+                {
+                    "name": "FId",
+                    "ty": " Food.Id"
+                },
+                {
+                    "name": "Count",
+                    "ty": " Int"
+                }
+            ],
+            "is_stub": false,
+            "exprs": [
+                "(let CurOrderItems (Items (CurOrder (Table TId))))",
+                "(let TheOrderItem (first CurOrderItems (lambda I (== (Id (Food I)) FId))))",
+                "(if (ok TheOrderItem) (+= (Count TheOrderItem) Count) (append CurOrderItems (OrderItem (Food FId) Count)))"
+            ]
+        },
+        {
+            "is_stub": false,
+            "args": [
+                {
+                    "name": "TId",
+                    "ty": " Table.id"
+                },
+                {
+                    "name": "FId",
+                    "ty": " Food.Id"
+                },
+                {
+                    "ty": " Int",
+                    "name": "Count"
+                }
+            ],
+            "name": "TableOrderRemove",
+            "ret_ty": null,
+            "exprs": [
+                "(let CurOrderItems (Items (CurOrder (Table TId))))",
+                "(let TheOrderItem (first CurOrderItems (lambda I (== (Id (Food I)) FId))))",
+                "(if (== (Count TheOrderItem) Count) (delete TheOrderItem) (-= (Count TheOrderItem) Count))"
+            ]
+        },
+        {
+            "is_stub": false,
+            "exprs": [
+                "(delete (Items (CurOrder (Table TId))))"
+            ],
+            "ret_ty": null,
+            "args": [
+                {
+                    "ty": " Table.id",
+                    "name": "TId"
+                },
+                {
+                    "ty": " Food.Id",
+                    "name": "FId"
+                }
+            ],
+            "name": "TableOrderClear"
+        },
+        {
+            "args": [
+                {
+                    "name": "OId",
+                    "ty": " Order.Id"
+                }
+            ],
+            "name": "OrderPrice",
+            "ret_ty": "Int",
+            "is_stub": false,
+            "exprs": [
+                "(sum (map (Items (Order OId)) (lambda I (* (Count I) (Price (Food I))))))"
+            ]
+        },
+        {
+            "name": "TableOrderPrice",
+            "exprs": [
+                "(OrderPrice (CurOrder (Table TId)))"
+            ],
+            "ret_ty": "Int",
+            "is_stub": false,
+            "args": [
+                {
+                    "name": "TId",
+                    "ty": " Table.Id"
+                }
+            ]
+        },
+        {
+            "is_stub": true,
+            "exprs": [
+            
+            ],
+            "name": "Pay",
+            "args": [
+                {
+                    "ty": "Int",
+                    "name": null
+                }
+            ],
+            "ret_ty": null
+        },
+        {
+            "name": "PayTableOrder",
+            "ret_ty": null,
+            "args": [
+                {
+                    "name": "TId",
+                    "ty": " Table.Id"
+                }
+            ],
+            "exprs": [
+                "(Pay (TableOrderPrice TId))",
+                "(= (Closed (CurOrder (Table (TId)))) True)",
+                "(= (CurOrder (Table TId)) (Order (Table TId) False []))"
+            ],
+            "is_stub": false
+        },
+        {
+            "name": "TableOrders",
+            "is_stub": false,
+            "ret_ty": "[Order]",
+            "exprs": [
+                "(filter Order (lambda O (== (Id (Table O)) TId)))"
+            ],
+            "args": [
+                {
+                    "ty": " Table.Id",
+                    "name": "TId"
+                }
+            ]
+        }
+    ]
+}

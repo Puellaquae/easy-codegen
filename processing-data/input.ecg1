@@ -1,4 +1,4 @@
-vec![table!(entity Img {
+(vec![table!(entity Img {
 field!(Path:@String),
 }),
 table!(entity Food {
@@ -17,4 +17,31 @@ table!(entity Order {
 field!(Table:Table),
 field!(Closed:Int{0..2}),
 field!(Items:[@OrderItem]),
-})]
+})], vec!(func!(fn TableOrderAppend(TId : " Table.id", FId : " Food.Id", Count : " Int") {
+"(let CurOrderItems (Items (CurOrder (Table TId))))",
+"(let TheOrderItem (first CurOrderItems (lambda I (== (Id (Food I)) FId))))",
+"(if (ok TheOrderItem) (+= (Count TheOrderItem) Count) (append CurOrderItems (OrderItem (Food FId) Count)))",
+}),
+func!(fn TableOrderRemove(TId : " Table.id", FId : " Food.Id", Count : " Int") {
+"(let CurOrderItems (Items (CurOrder (Table TId))))",
+"(let TheOrderItem (first CurOrderItems (lambda I (== (Id (Food I)) FId))))",
+"(if (== (Count TheOrderItem) Count) (delete TheOrderItem) (-= (Count TheOrderItem) Count))",
+}),
+func!(fn TableOrderClear(TId : " Table.id", FId : " Food.Id") {
+"(delete (Items (CurOrder (Table TId))))",
+}),
+func!(fn OrderPrice(OId : " Order.Id") -> Int {
+"(sum (map (Items (Order OId)) (lambda I (* (Count I) (Price (Food I))))))",
+}),
+func!(fn TableOrderPrice(TId : " Table.Id") -> Int {
+"(OrderPrice (CurOrder (Table TId)))",
+}),
+func!(fn Pay("Int")),
+func!(fn PayTableOrder(TId : " Table.Id") {
+"(Pay (TableOrderPrice TId))",
+"(= (Closed (CurOrder (Table (TId)))) True)",
+"(= (CurOrder (Table TId)) (Order (Table TId) False []))",
+}),
+func!(fn TableOrders(TId : " Table.Id") -> [Order] {
+"(filter Order (lambda O (== (Id (Table O)) TId)))",
+})))

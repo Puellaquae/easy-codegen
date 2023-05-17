@@ -30,8 +30,13 @@ for (const l of line) {
     tmpGroup.push(l);
     if (l.startsWith("entity")) {
         inEntity = true;
-    } else if (l.startsWith("api")) {
-        inApi = true;
+    } else if (l.startsWith("fn")) {
+        if (!l.endsWith("{")) {
+            apis.push(tmpGroup);
+            tmpGroup = [];
+        } else {
+            inApi = true;
+        }
     } else if (l == "}" && breaket == 0) {
         if (inEntity) {
             entities.push(tmpGroup);
@@ -63,9 +68,31 @@ for (const entity of entities) {
     entity[entity.length - 1] += ")";
 }
 
-let entitiesBuilder = entities.map(e => e.join("\n")).join(",\n");
-entitiesBuilder = "vec![" + entitiesBuilder + "]";
+for (const fn of apis) {
+    let ei = 1;
+    let [l, mr] = fn[0].split("(");
+    let [m, r] = mr.split(")");
+    let args = m.split(",").map(a => {
+        let [n, t] = a.split(":");
+        if (t === undefined) {
+            return `"${n}"`
+        } else {
+            return `${n} : "${t}"`
+        }
+    }).join(",");
 
-writeFileSync(outFile, entitiesBuilder);
+    fn[0] = `func!(${l}(${args})${r}`;
+    for (; ei < fn.length - 1; ei++) {
+        fn[ei] = `"${fn[ei]}",`
+    }
+    fn[fn.length - 1] += ")";
+}
+
+let entitiesBuilder = entities.map(e => e.join("\n")).join(",\n");
+entitiesBuilder = `vec![${entitiesBuilder}]`;
+let fnsBuilder = apis.map(e => e.join("\n")).join(",\n");
+fnsBuilder = `vec!(${fnsBuilder})`;
+
+writeFileSync(outFile, `(${entitiesBuilder}, ${fnsBuilder})`);
 
 console.log(`PreProcessing, output: ${resolve(outFile)}`);

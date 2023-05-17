@@ -11,6 +11,8 @@ use std::{
     path::Path,
 };
 
+use crate::types::Ecg;
+
 fn main() {
     let inpath = canonicalize(
         Path::new(include_str!("../config/in.txt"))
@@ -18,21 +20,15 @@ fn main() {
             .unwrap(),
     )
     .unwrap();
-    
-    println!(
-        "Parsing, input: {}",
-        inpath.display()
-    );
-    let t = include!(include_str!("../config/in.txt"));
+
+    println!("Parsing, input: {}", inpath.display());
+    let (ens, fns) = include!(include_str!("../config/in.txt"));
     write(
         include_str!("../config/out.txt"),
-        format!("{:#}", t.to_json()),
+        format!("{:#}", Ecg { entities: ens, fns }.to_json()),
     )
     .unwrap();
-    
+
     let outpath = canonicalize(include_str!("../config/out.txt")).unwrap();
-    println!(
-        "Parsing, output: {}",
-        outpath.display()
-    );
+    println!("Parsing, output: {}", outpath.display());
 }

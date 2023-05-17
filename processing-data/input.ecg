@@ -24,38 +24,37 @@ entity Order {
 }
 
 fn TableOrderAppend(TId: Table.id, FId: Food.Id, Count: Int) {
-    CurOrderItems <- TId.Table.CurOrder.Items
-    TheOrderItem <~ CurOrderItems.first{OrderItem.Food.Id == &FId}
-        ?{ TheOrderItem.Count += Count } 
-        :{ CurOrderItems ++ OrderItem(FId.Food, Count) }
+    (let CurOrderItems (Items (CurOrder (Table TId))))
+    (let TheOrderItem (first CurOrderItems (lambda I (== (Id (Food I)) FId))))
+    (if (ok TheOrderItem) (+= (Count TheOrderItem) Count) (append CurOrderItems (OrderItem (Food FId) Count)))
 }
 
 fn TableOrderRemove(TId: Table.id, FId: Food.Id, Count: Int) {
-    CurOrderItems <- TId.Table.CurOrder.Items
-    TheOrderItem <- CurOrderItems.first{OrderItem.Food.Id == &FId} 
-    TheOrderItem.Count == Count 
-        ?{ TheOrderItem.delete }
-        :{ TheOrderItem.Count -= Count }
+    (let CurOrderItems (Items (CurOrder (Table TId))))
+    (let TheOrderItem (first CurOrderItems (lambda I (== (Id (Food I)) FId))))
+    (if (== (Count TheOrderItem) Count) (delete TheOrderItem) (-= (Count TheOrderItem) Count))
 }
 
 fn TableOrderClear(TId: Table.id, FId: Food.Id) {
-    TId.Table.CurOrder.Items.delete
+    (delete (Items (CurOrder (Table TId))))
 }
 
 fn OrderPrice(OId: Order.Id) -> Int {
-    OId.Order.Items.map{OrderItem.Food.Price * OrderItem.Count}.sum
+    (sum (map (Items (Order OId)) (lambda I (* (Count I) (Price (Food I))))))
 }
 
 fn TableOrderPrice(TId: Table.Id) -> Int {
-    OrderPrice(TId.Table.CurOrder)
+    (OrderPrice (CurOrder (Table TId)))
 }
 
-fn TableOrderPrice(TId: Table.Id) {
-    $pay(TableOrderPrice(TId))
-    TId.Table.CurOrder.Closed = True
-    TId.Table.CurOrder = Order(TId.Table, False, [])
+fn Pay(Int)
+
+fn PayTableOrder(TId: Table.Id) {
+    (Pay (TableOrderPrice TId))
+    (= (Closed (CurOrder (Table (TId)))) True)
+    (= (CurOrder (Table TId)) (Order (Table TId) False []))
 }
 
 fn TableOrders(TId: Table.Id) -> [Order] {
-    Order.filter{Order.Table.Id == TId}
+    (filter Order (lambda O (== (Id (Table O)) TId)))
 }

@@ -16,5 +16,26 @@ pub struct Field {
 #[derive(Debug, Default, ToJson)]
 pub struct Table {
     pub name: String,
-    pub fields: Vec<Field>
+    pub fields: Vec<Field>,
+}
+
+#[derive(Debug, Default, ToJson)]
+pub struct Arg {
+    pub name: Option<String>,
+    pub ty: String,
+}
+
+#[derive(Debug, Default, ToJson)]
+pub struct Func {
+    pub name: String,
+    pub is_stub: bool,
+    pub args: Vec<Arg>,
+    pub ret_ty : Option<String>,
+    pub exprs: Vec<String>,
+}
+
+#[derive(Debug, ToJson)]
+pub struct Ecg {
+    pub entities: Vec<Table>,
+    pub fns: Vec<Func>,
 }

@@ -1,35 +1,39 @@
 ﻿using LogicGen;
+using System.Text.Json;
 
 namespace LogicGen
 {
-    public class Tree
+    public class RawSExpr
     {
 
     }
 
-    public class FnContext
+    public class RawSExprValue : RawSExpr
     {
-        public FnContext() { }
+        public string Value { get; set; }
 
-        public void Begin(string name)
+        public RawSExprValue(string value)
         {
-
-        }
-
-        public void End()
-        {
-
-        }
-
-        public Tree Input(Tree tree)
-        {
-
+            Value = value;
         }
     }
 
-    public class Table
+    public class RawSExprApply : RawSExpr
     {
-        public static Tree Id;
+        public List<RawSExpr> Applies { get; set; }
+
+        public RawSExprApply(params RawSExpr[] applies)
+        {
+            Applies = new List<RawSExpr>(applies);
+        }
+    }
+
+    public class RawFunction
+    {
+        public string Name { get; set; }
+        public bool IsStub { get; set; } = false;
+        public List<(string name, string type)> Args { get; set; }
+        public List<RawSExpr> Exprs { get; set; }
     }
 }
 
@@ -37,25 +41,35 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        FnContext fnCtx = new();
-
+        RawFunction fn = new RawFunction()
         {
-            fnCtx.Begin("TableOrderAppend");
-            var TId = fnCtx.Input(Table.Id);
-            var FId = fnCtx.Input(Food.Id);
-            var Count = fnCtx.Input(Int);
-
-            var CurOrderItems = TId.Table.CurOrder.Items;
-            var TheOrderItem = CurOrderItems.First(ctx => ctx.OrderItem.Food.Id == FId);
-            Branch(
-                TheOrderItem,
-                () => { TheOrderItem.Count = TheOrderItem.Count + Count; },
-                () => { CurOrderItems.Append(OrderItem(FId.Food, Count)); }
-            );
-
-            fnCtx.End();
-        }
-
-        Console.WriteLine("Hello, World!");
+            Name = "TableOrderAppend",
+            IsStub = false,
+            Args = new List<(string name, string type)>
+            {
+                ("tid", "Table.Id"),
+                ("fid", "Food.Id"),
+                ("count", "Int"),
+            },
+            Exprs = new List<RawSExpr>()
+            {
+                new RawSExprApply(
+                    new RawSExprValue("let"),
+                    new RawSExprValue("CurOrderItems"),
+                    new RawSExprApply(
+                        new RawSExprValue("Items"),
+                        new RawSExprApply(
+                            new RawSExprValue("CurOrder"),
+                            new RawSExprApply(
+                                new RawSExprValue("Table"),
+                                new RawSExprValue("tid")
+                            )
+                        )
+                    )
+                )
+            }
+        };
+        string res = JsonSerializer.Serialize(fn);
+        Console.WriteLine(res);
     }
 }

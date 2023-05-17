@@ -1,8 +1,18 @@
 ﻿using CodeGen;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 internal class Program
 {
+    public class RawData
+    {
+        [JsonPropertyName("entities")]
+        public List<RawTable> Entities { get; set; }
+
+        [JsonPropertyName("fns")]
+        public List<object> Fns { get; set; }
+    }
+
     private static void Main(string[] args)
     {
         string? basePath = null;
@@ -26,16 +36,17 @@ internal class Program
         }
 
         basePath ??= "../../processing-data/";
-        inFile ??= "parsed.ecg2";
+        inFile ??= "input.ecg2";
 
         string parsedJsonPath = Path.Combine(basePath, inFile);
 
         Console.WriteLine($"CodeGen, Input: {Path.GetFullPath(parsedJsonPath)}");
-        
-        List<RawTable> raw = JsonSerializer.Deserialize<List<RawTable>>(File.ReadAllText(parsedJsonPath))!;
-        
         Console.WriteLine("Load File");
-        Database database = new(raw);
+
+        RawData raw = JsonSerializer.Deserialize<RawData>(File.ReadAllText(parsedJsonPath))!;
+        List<RawTable> rawTable = raw.Entities;
+
+        Database database = new(rawTable);
 
         Console.WriteLine("Resolve Primary Key");
         foreach (Table table in database.tables)

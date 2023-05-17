@@ -83,13 +83,13 @@
                         Field rightPriKey = linkTable.PrimaryKey.First();
                         if (field.IsUnique)
                         {
-                            newTable.AddField(new Field(newTable, $"{table.name}::{leftPriKey.name}", leftPriKey.type)
+                            newTable.AddField(new Field(newTable, $"{table.name}:l:{leftPriKey.name}", leftPriKey.type)
                             {
                                 IsPrimaryKey = true,
                                 isForeignKey = true,
                                 foreignLink = leftPriKey
                             });
-                            newTable.AddField(new Field(newTable, $"{linkTable.name}::{rightPriKey.name}", rightPriKey.type)
+                            newTable.AddField(new Field(newTable, $"{linkTable.name}:r:{rightPriKey.name}", rightPriKey.type)
                             {
                                 IsPrimaryKey = true,
                                 isForeignKey = true,
@@ -98,12 +98,12 @@
                         }
                         else if (field.IsNullable)
                         {
-                            newTable.AddField(new Field(newTable, $"{table.name}::{leftPriKey.name}", leftPriKey.type)
+                            newTable.AddField(new Field(newTable, $"{table.name}:l:{leftPriKey.name}", leftPriKey.type)
                             {
                                 isForeignKey = true,
                                 foreignLink = leftPriKey
                             });
-                            newTable.AddField(new Field(newTable, $"{linkTable.name}::{rightPriKey.name}", rightPriKey.type)
+                            newTable.AddField(new Field(newTable, $"{linkTable.name}:r:{rightPriKey.name}", rightPriKey.type)
                             {
                                 IsNullable = true,
                                 isForeignKey = true,
@@ -112,12 +112,12 @@
                         }
                         else
                         {
-                            newTable.AddField(new Field(newTable, $"{table.name}::{leftPriKey.name}", leftPriKey.type)
+                            newTable.AddField(new Field(newTable, $"{table.name}:l:{leftPriKey.name}", leftPriKey.type)
                             {
                                 isForeignKey = true,
                                 foreignLink = leftPriKey
                             });
-                            newTable.AddField(new Field(newTable, $"{linkTable.name}::{rightPriKey.name}", rightPriKey.type)
+                            newTable.AddField(new Field(newTable, $"{linkTable.name}:r:{rightPriKey.name}", rightPriKey.type)
                             {
                                 isForeignKey = true,
                                 foreignLink = rightPriKey

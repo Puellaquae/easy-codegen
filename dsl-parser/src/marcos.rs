@@ -76,3 +76,56 @@ macro_rules! table {
         }
     }};
 }
+
+macro_rules! func {
+    (fn $name:ident ( $($argn:ident : $argt : expr),* ) -> $ret:tt { $($t:expr,)* }) => {{
+        let func = crate::types::Func{
+            name: stringify!($name).to_string(),
+            is_stub: false,
+            ret_ty: Some(stringify!($ret).to_string()),
+            args: vec![$(
+                crate::types::Arg {
+                    name: Some(stringify!($argn).to_string()), 
+                    ty: $argt.to_string()
+                }
+            ),*],
+            exprs: vec![$($t.to_string()),*]
+        };
+        func
+    }};
+
+    (fn $name:ident ( $($argn:ident : $argt : expr),* ) { $($t:expr,)* }) => {{
+        let func = crate::types::Func{
+            name: stringify!($name).to_string(),
+            is_stub: false,
+            ret_ty: None,
+            args: vec![$(
+                crate::types::Arg {
+                    name: Some(stringify!($argn).to_string()), 
+                    ty: $argt.to_string()
+                }
+            ),*],
+            exprs: vec![$($t.to_string()),*]
+        };
+        func
+    }};
+
+    (fn $name:ident ( $($args:expr),* )) => {{
+        let func = crate::types::Func{
+            name: stringify!($name).to_string(),
+            is_stub: true,
+            args: vec![$($args),*]
+                    .into_iter()
+                    .map(|x| {
+                        crate::types::Arg {
+                            name: None,
+                            ty: x.to_string()
+                        }
+                    })
+                    .collect(),
+            ret_ty: None,
+            exprs: vec![]
+        };
+        func
+    }};
+}
