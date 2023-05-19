@@ -1,4 +1,5 @@
-﻿using CodeGen;
+﻿using SQLGen;
+using SExpr;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -7,10 +8,10 @@ internal class Program
     public class RawData
     {
         [JsonPropertyName("entities")]
-        public List<RawTable> Entities { get; set; }
+        public List<RawTable>? Entities { get; set; }
 
         [JsonPropertyName("fns")]
-        public List<object> Fns { get; set; }
+        public List<object>? Fns { get; set; }
     }
 
     private static void Main(string[] args)
@@ -44,33 +45,43 @@ internal class Program
         Console.WriteLine("Load File");
 
         RawData raw = JsonSerializer.Deserialize<RawData>(File.ReadAllText(parsedJsonPath))!;
-        List<RawTable> rawTable = raw.Entities;
+        List<RawTable> rawTable = raw.Entities!;
 
         Database database = new(rawTable);
-
-        Console.WriteLine("Resolve Primary Key");
-        foreach (Table table in database.tables)
-        {
-            _ = table.PrimaryKey;
-        }
-
-        Console.WriteLine("Resolve UserDef Type");
-        foreach (Table table in database.tables)
-        {
-            table.ResolveDirectForeignLink();
-        }
-
-        Console.WriteLine("Resolve Array Type");
-        database.ResolveArrayType();
-        foreach (Table table in database.tables)
-        {
-            _ = table.PrimaryKey;
-        }
 
         Console.WriteLine("Generate SQL Table Create Script");
         foreach (Table table in database.tables)
         {
             Console.Write($"{table.GenerateSQL()}\n");
+        }
+
+        Console.WriteLine("Types:");
+        Console.WriteLine(string.Join("\n", database.GetTypes()));
+        Console.WriteLine("TypeAlias:");
+        Console.WriteLine(string.Join("\n", database.GetTypeAlias().Select((kv) => $"{kv.Key} => {kv.Value}")));
+
+        Console.WriteLine("\nTypeFnSigns:");
+        var fns = database.GetFnSigns();
+        Console.WriteLine(string.Join("\n", fns.Select((kv) => $"{kv.Key.Item1} = {string.Join(" -> ", kv.Key.Item2)} -> {kv.Value}")));
+
+        Console.WriteLine("\nTypeFns:");
+        var fnss = database.GetFns();
+        foreach (var fn in fnss)
+        {
+            string expr = fn.Value;
+            string fname = fn.Key.Item1;
+            string[] par = fn.Key.Item2;
+
+            Console.WriteLine($"{fname} = {string.Join(" -> ", par)} = {expr}");
+
+            SimpleSExpr simpleSExpr = new SimpleSExprParser(expr).Parse();
+            SimpleSExpr sexpr = SimpleSExpr.Simplify(simpleSExpr);
+            TypedSExpr texpr = TypedSExpr.FromSimpleSExpr(
+                SQLGenericFnSign.GenericSigns,
+                new Dictionary<(string, string[]), string>(new FnSignEqualityComparer()),
+                par.Select((v, i) => (v, index: i + 1)).ToDictionary(x => x.index.ToString(), x => x.v),
+                sexpr);
+            Console.WriteLine(texpr);
         }
     }
 }

@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using System.Text.Json.Serialization;
 
-namespace CodeGen
+namespace SQLGen
 {
     public class RawTable
     {

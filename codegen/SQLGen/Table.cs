@@ -1,6 +1,7 @@
-﻿using System.Text;
+﻿using SExpr;
+using System.Text;
 
-namespace CodeGen
+namespace SQLGen
 {
     public class Table
     {
@@ -8,6 +9,12 @@ namespace CodeGen
         public readonly List<Field> fields = new();
         private readonly Dictionary<string, Field> fieldMap = new();
         private HashSet<Field>? primaryKey = null;
+
+
+        /// <summary>
+        /// if the table is auto-gened, it's hidden for developer
+        /// </summary>
+        public bool Hidden { get; set; } = false;
 
         public HashSet<Table> directLink = new();
         public HashSet<Table> arrayLink = new();
@@ -90,7 +97,8 @@ namespace CodeGen
                     Field fieldForeign = new(field.OwnerTable, $"{field.name}.{priKey.name}", priKey.type)
                     {
                         isForeignKey = true,
-                        foreignLink = priKey
+                        foreignLink = priKey,
+                        hidden = true
                     };
                     field.dependForigenLink = fieldForeign;
 
@@ -153,6 +161,8 @@ namespace CodeGen
             string foreignKeys = string.Join(",\n", fields.Where(f => f.isForeignKey).Select(f => $"    FOREIGN KEY(\"{f.name}\") REFERENCES \"{f.foreignLink!.OwnerTable.name}\"(\"{f.foreignLink!.name}\")"));
             return $"CREATE TABLE \"{name}\" (\n{string.Join(",\n", new string[] { fieldsSql, priKey, foreignKeys }.Where(s => s.Length != 0))}\n);\n";
         }
-    }
 
+        public string SQLType { get => name; }
+        public string SQLArrayOfType { get => SQLType.ArrayOfType(); }
+    }
 }

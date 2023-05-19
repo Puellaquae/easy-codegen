@@ -1,6 +1,7 @@
-﻿ using System.Text;
+﻿using SExpr;
+using System.Text;
 
-namespace CodeGen
+namespace SQLGen
 {
     public class Field
     {
@@ -217,6 +218,9 @@ namespace CodeGen
             }
             return sb.ToString();
         }
+
+        public string SQLType { get => $"{OwnerTable.SQLType}.{name}"; }
+        public string SQLArrayOfType { get => SQLType.ArrayOfType(); }
     }
 
 }

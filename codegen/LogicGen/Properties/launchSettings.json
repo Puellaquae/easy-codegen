@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "LogicGen": {
+      "commandName": "Project",
+      "workingDirectory": "$(ProjectDir)"
+    }
+  }
+}
