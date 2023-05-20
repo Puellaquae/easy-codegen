@@ -1,9 +1,11 @@
-import sqlite3 from "sqlite3"
+import koa from "koa"
+import koaRouter from "koa-router"
 
-let db = new sqlite3.Database("db.sqlite")
+let app = new koa();
+let router = new koaRouter();
 
-db.all("SELECT * FROM Test", function (err, rows) {
-    console.log(err);
-    console.log(rows);
-})
-
+router.get("/cate/:cid/goods", (ctx, next) => {
+    let cid = ctx.params.cid;
+    let params = ctx.query
+    let ret = func(cid)
+});

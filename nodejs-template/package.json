@@ -11,6 +11,8 @@
   "license": "ISC",
   "dependencies": {
     "generic-pool": "^3.9.0",
+    "koa": "^2.14.2",
+    "koa-router": "^12.0.0",
     "sqlite3": "^5.1.6"
   }
 }

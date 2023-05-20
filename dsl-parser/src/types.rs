@@ -34,8 +34,18 @@ pub struct Func {
     pub exprs: Vec<String>,
 }
 
+#[derive(Debug, Default, ToJson)]
+
+pub struct Route {
+    pub path: String,
+    pub method: String,
+    pub fn_name: String,
+    pub params: Vec<String>
+}
+
 #[derive(Debug, ToJson)]
 pub struct Ecg {
     pub entities: Vec<Table>,
     pub fns: Vec<Func>,
+    pub route: Vec<Route>
 }

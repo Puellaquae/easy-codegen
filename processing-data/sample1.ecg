@@ -1,0 +1,31 @@
+entity Product {
+    Name: String
+    Description: ?String
+    Stock: Int
+    Price: Int
+}
+
+entity OrderItem {
+    Product: Product
+    Count: Int    
+}
+
+entity Order {
+    Items: [@OrderItem]
+    Date: Int
+}
+
+const OrderDao.Orders() => all("SELECT * FROM Order")
+
+fn Orders() -> [Order] {
+    let ret = OrderDao.Orders()
+    return ret;
+}
+
+
+
+fn NewProduct(Name: String, Description: ?String, Stock: Int, Price: Int) {
+    (append Product (create Product Name Description Stock Price))
+}
+
+

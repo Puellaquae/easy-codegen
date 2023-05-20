@@ -58,3 +58,12 @@ fn PayTableOrder(TId: Table.Id) {
 fn TableOrders(TId: Table.Id) -> [Order] {
     (filter Order (lambda O (== (Id (Table O)) TId)))
 }
+
+route {
+    "cate/:cid" {
+        "goods" {
+            get => category_goods(cid)
+            post => category_new_goods(cid, _)
+        }
+    }
+}

@@ -329,31 +329,53 @@ namespace SQLGen
                         continue;
                     }
                     fns.DictCreateListIfNot(
-                        field.SQLType,
+                        field.name,
                         new SQLFuncExpr(
-                            $"SELECT \"{field.SQLType}\" FROM ({{0}})",
+                            $"SELECT \"{field.SQLIdent}\" FROM ({{0}})",
                             field.SQLType,
                             table.SQLType));
                     fns.DictCreateListIfNot(
-                        field.SQLArrayOfType,
+                        field.name,
                         new SQLFuncExpr(
-                            $"SELECT \"{field.SQLType}\" FROM ({{0}})",
+                            $"SELECT \"{field.SQLIdent}\" FROM ({{0}})",
                             field.SQLArrayOfType,
                             table.SQLArrayOfType));
                     if (field.IsPrimaryKey)
                     {
-                        fns.DictCreateListIfNot(table.SQLType, new SQLFuncExpr(
-                            $"SELECT * FROM \"{table.SQLType}\" WHERE \"{field.SQLType}\" == ({{0}})",
+                        fns.DictCreateListIfNot(table.name, new SQLFuncExpr(
+                            $"SELECT * FROM \"{table.SQLIdent}\" WHERE \"{field.SQLIdent}\" == ({{0}})",
                             table.SQLType,
                             field.SQLType));
-                        fns.DictCreateListIfNot(table.SQLArrayOfType, new SQLFuncExpr(
-                            $"SELECT * FROM \"{table.SQLType}\" WHERE \"{field.SQLType}\" IN ({{0}})",
+                        fns.DictCreateListIfNot(table.name, new SQLFuncExpr(
+                            $"SELECT * FROM \"{table.SQLIdent}\" WHERE \"{field.SQLIdent}\" IN ({{0}})",
                             table.SQLArrayOfType,
                             field.SQLArrayOfType));
                     }
                 }
             }
             return fns;
+        }
+
+        public string GenJSTypeDef()
+        {
+            return string.Join(",", tables.Where(t => !t.Hidden).Select(t =>
+            {
+                string member = string.Join(",", t.fields.Where(f => !f.hidden).Select(
+                    f =>
+                    {
+                        if (f.IsArrayOfType)
+                        {
+                            return $"\"{f.name}\":{{\"kind\": \"array\", \"type\":{{\"kind\":\"unit\",\"typename\":\"{f.SQLType}\"}}}}";
+                        }
+                        else
+                        {
+                            return $"\"{f.name}\":{{\"kind\":\"unit\",\"typename\":\"{f.SQLType}\"}}";
+                        }
+                    }));
+                string primaryMember = $"\"primaryMember\":\"{t.PrimaryKey.FirstOrDefault()!.name}\"";
+                string uniqueMember = $"\"uniqueMember\":[{string.Join(",", t.fields.Where(f => f.IsUnique && !f.hidden).Select(f => $"\"{f.name}\""))}]";
+                return $"\"{t.name}\":{{\"kind\":\"object\",{primaryMember},{uniqueMember},\"member\":{{{member}}}}}";
+            }));
         }
     }
 }

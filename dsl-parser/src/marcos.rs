@@ -129,3 +129,22 @@ macro_rules! func {
         func
     }};
 }
+
+macro_rules! route {
+    (@params ( $($p:tt),* )) => {
+        vec![$(stringify!($p).to_string()),*]
+    };
+
+    ($($url:expr, $me:ident => $fn:ident $rst:tt;)*) => {{
+        let mut rs : Vec<crate::types::Route> = vec![];
+        $(
+            rs.push(crate::types::Route {
+                path: $url.to_string(),
+                method: stringify!($me).to_string(),
+                fn_name: stringify!($fn).to_string(),
+                params: route!(@params $rst)
+            });
+        )*
+        rs
+    }};
+}

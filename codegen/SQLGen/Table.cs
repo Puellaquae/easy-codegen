@@ -162,6 +162,7 @@ namespace SQLGen
             return $"CREATE TABLE \"{name}\" (\n{string.Join(",\n", new string[] { fieldsSql, priKey, foreignKeys }.Where(s => s.Length != 0))}\n);\n";
         }
 
+        public string SQLIdent { get => name; }
         public string SQLType { get => name; }
         public string SQLArrayOfType { get => SQLType.ArrayOfType(); }
     }

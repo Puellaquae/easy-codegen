@@ -219,7 +219,24 @@ namespace SQLGen
             return sb.ToString();
         }
 
-        public string SQLType { get => $"{OwnerTable.SQLType}.{name}"; }
+        public string SQLIdent
+        {
+            get
+            {
+                return $"{OwnerTable.SQLType}.{name}";
+            }
+        }
+        public string SQLType
+        {
+            get
+            {
+                if (type == Type.UserDef)
+                {
+                    return $"{userDef!.SQLType}";
+                }
+                return $"{OwnerTable.SQLType}.{name}";
+            }
+        }
         public string SQLArrayOfType { get => SQLType.ArrayOfType(); }
     }
 

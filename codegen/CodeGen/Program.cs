@@ -83,5 +83,7 @@ internal class Program
                 sexpr);
             Console.WriteLine(texpr);
         }
+
+        Console.WriteLine(database.GenJSTypeDef());
     }
 }

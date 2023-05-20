@@ -39,5 +39,26 @@
                 return expr;
             }
         }
+
+        public SimpleSExpr Simplify()
+        {
+            if (this is SimpleSExprList list && list.sExprs.Count == 1)
+            {
+                return Simplify(list.sExprs[0]);
+            }
+            else if (this is SimpleSExprList list1)
+            {
+                var sExprs = new List<SimpleSExpr>();
+                foreach (var item in list1.sExprs)
+                {
+                    sExprs.Add(Simplify(item));
+                }
+                return new SimpleSExprList(sExprs.ToArray());
+            }
+            else
+            {
+                return this;
+            }
+        }
     }
 }

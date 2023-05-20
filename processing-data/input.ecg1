@@ -44,4 +44,5 @@ func!(fn PayTableOrder(TId : " Table.Id") {
 }),
 func!(fn TableOrders(TId : " Table.Id") -> [Order] {
 "(filter Order (lambda O (== (Id (Table O)) TId)))",
-})))
+})), route!{"/cate/:cid/goods", get => category_goods(cid);
+"/cate/:cid/goods", post => category_new_goods(cid, _);})

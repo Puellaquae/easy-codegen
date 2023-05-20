@@ -17,11 +17,12 @@ let infileData = readFileSync(inFile).toString();
 let line = infileData.split("\n").map(l => l.trim()).filter(l => l != "");
 
 let entities = [];
-
 let apis = [];
+let route = [];
 
 let inEntity = false;
 let inApi = false;
+let inRoute = false;
 
 let tmpGroup = [];
 let breaket = 0;
@@ -37,6 +38,8 @@ for (const l of line) {
         } else {
             inApi = true;
         }
+    } else if (l.startsWith("route")) {
+        inRoute = true;
     } else if (l == "}" && breaket == 0) {
         if (inEntity) {
             entities.push(tmpGroup);
@@ -44,8 +47,13 @@ for (const l of line) {
         } else if (inApi) {
             apis.push(tmpGroup);
             tmpGroup = [];
+        } else if (inRoute) {
+            route = tmpGroup;
+            tmpGroup = [];
         }
         inEntity = false;
+        inApi = false;
+        inRoute = false;
     } else if (l == "{") {
         breaket++;
     } else if (l == "}") {
@@ -93,6 +101,21 @@ entitiesBuilder = `vec![${entitiesBuilder}]`;
 let fnsBuilder = apis.map(e => e.join("\n")).join(",\n");
 fnsBuilder = `vec!(${fnsBuilder})`;
 
-writeFileSync(outFile, `(${entitiesBuilder}, ${fnsBuilder})`);
+let newRoot = [];
+let root = [""];
+for (let i = 1; i < route.length - 1; i++) {
+    if (route[i].trim().startsWith('"')) {
+        let [_a, url, _b] = route[i].split('"');
+        root.push(url);
+    } else if (route[i].trim() == "}") {
+        root.pop();
+    } else {
+        newRoot.push(`"${root.join("/")}", ${route[i]};`);
+    }
+}
+
+let routeBuilder = `route!{${newRoot.join("\n")}}`;
+
+writeFileSync(outFile, `(${entitiesBuilder}, ${fnsBuilder}, ${routeBuilder})`);
 
 console.log(`PreProcessing, output: ${resolve(outFile)}`);
