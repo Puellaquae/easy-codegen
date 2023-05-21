@@ -365,11 +365,13 @@ namespace SQLGen
                     {
                         if (f.IsArrayOfType)
                         {
-                            return $"\"{f.name}\":{{\"kind\": \"array\", \"type\":{{\"kind\":\"unit\",\"typename\":\"{f.SQLType}\"}}}}";
+                            string alias = (f.type != Field.Type.UserDef) ? $",\"alias\":\"{f.TypeName}\"" : "";
+                            return $"\"{f.name}\":{{\"kind\": \"array\", \"type\":{{\"kind\":\"unit\",\"typename\":\"{f.SQLType}\"{alias}}}}}";
                         }
                         else
                         {
-                            return $"\"{f.name}\":{{\"kind\":\"unit\",\"typename\":\"{f.SQLType}\"}}";
+                            string alias = (f.type != Field.Type.UserDef) ? $",\"alias\":\"{f.TypeName}\"" : "";
+                            return $"\"{f.name}\":{{\"kind\":\"unit\",\"typename\":\"{f.SQLType}\"{alias}}}";
                         }
                     }));
                 string primaryMember = $"\"primaryMember\":\"{t.PrimaryKey.FirstOrDefault()!.name}\"";

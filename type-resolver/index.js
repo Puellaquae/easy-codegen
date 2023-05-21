@@ -9,11 +9,13 @@ const SQL_TABLE_TYPES = {
         "member": {
             "Path": {
                 "kind": "unit",
-                "typename": "Img.Path"
+                "typename": "Img.Path",
+                "alias": "String"
             },
             "Id": {
                 "kind": "unit",
-                "typename": "Img.Id"
+                "typename": "Img.Id",
+                "alias": "Int"
             }
         }
     },
@@ -26,7 +28,8 @@ const SQL_TABLE_TYPES = {
         "member": {
             "Name": {
                 "kind": "unit",
-                "typename": "Food.Name"
+                "typename": "Food.Name",
+                "alias": "String"
             },
             "Img": {
                 "kind": "unit",
@@ -34,11 +37,13 @@ const SQL_TABLE_TYPES = {
             },
             "Price": {
                 "kind": "unit",
-                "typename": "Food.Price"
+                "typename": "Food.Price",
+                "alias": "Int"
             },
             "Id": {
                 "kind": "unit",
-                "typename": "Food.Id"
+                "typename": "Food.Id",
+                "alias": "Int"
             }
         }
     },
@@ -55,7 +60,8 @@ const SQL_TABLE_TYPES = {
             },
             "Id": {
                 "kind": "unit",
-                "typename": "Table.Id"
+                "typename": "Table.Id",
+                "alias": "Int"
             }
         }
     },
@@ -72,11 +78,13 @@ const SQL_TABLE_TYPES = {
             },
             "Count": {
                 "kind": "unit",
-                "typename": "OrderItem.Count"
+                "typename": "OrderItem.Count",
+                "alias": "Int"
             },
             "Id": {
                 "kind": "unit",
-                "typename": "OrderItem.Id"
+                "typename": "OrderItem.Id",
+                "alias": "Int"
             }
         }
     },
@@ -94,7 +102,8 @@ const SQL_TABLE_TYPES = {
             },
             "Closed": {
                 "kind": "unit",
-                "typename": "Order.Closed"
+                "typename": "Order.Closed",
+                "alias": "Int"
             },
             "Items": {
                 "kind": "array",
@@ -105,15 +114,33 @@ const SQL_TABLE_TYPES = {
             },
             "Id": {
                 "kind": "unit",
-                "typename": "Order.Id"
+                "typename": "Order.Id",
+                "alias": "Int"
             }
         }
     }
 };
 
-function resolveTypeSelfRef(all, cur, update) {
+const BASIC_TYPES = {
+    Int: {
+        kind: "basic",
+        typename: "int"
+    },
+    String: {
+        kind: "basic",
+        typename: "str"
+    },
+    Blob: {
+        kind: "basic",
+        typename: "blob"
+    }
+};
+
+function resolveTypeSelfRef(all, basic, cur, update) {
     if (cur.kind === "unit" && all[cur.typename] !== undefined) {
         update(all[cur.typename]);
+    } else if (cur.kind === "unit" && cur.alias !== undefined && basic[cur.alias] !== undefined) {
+        cur.alias = basic[cur.alias];
     } else if (cur.kind === "array") {
         resolveTypeSelfRef(all, cur.type, t => cur.type = t);
     } else if (cur.kind === "object") {
@@ -124,23 +151,8 @@ function resolveTypeSelfRef(all, cur, update) {
 }
 
 for (let type of Object.keys(SQL_TABLE_TYPES)) {
-    resolveTypeSelfRef(SQL_TABLE_TYPES, SQL_TABLE_TYPES[type], t => SQL_TABLE_TYPES[type] = t);
+    resolveTypeSelfRef(SQL_TABLE_TYPES, BASIC_TYPES, SQL_TABLE_TYPES[type], t => SQL_TABLE_TYPES[type] = t);
 }
-
-const BASIC_TYPES = {
-    Int: {
-        kind: "unit",
-        typename: "int"
-    },
-    Str: {
-        kind: "unit",
-        typename: "str"
-    },
-    Blob: {
-        kind: "unit",
-        typename: "blob"
-    }
-};
 
 const UNREACHABLE = () => {
     throw new Error("unreachable");
@@ -149,6 +161,19 @@ const UNREACHABLE = () => {
 const UNIMPLEMENTED = () => {
     throw new Error("unimplemented");
 };
+
+const PLATFORMS = {
+    HOST: 1,
+    SQL: 2,
+    BOTH: 3
+}
+
+function ArrayOfType(type) {
+    return {
+        kind: "array",
+        type
+    };
+}
 
 /**
  * 
@@ -170,8 +195,35 @@ function getMemberName(typename) {
     return c;
 }
 
+const OPERATORS = {
+    FIRST: "first",
+    FILTER: "filter",
+    MAP: "map",
+    SUM: "sum",
+    COUNT: "count",
+    SKIP: "skip",
+    TAKE: "take",
+    REACCESS: "reacess",
+    MEMBER_ACCESS: "member-access",
+    IS_NULL: "is-null",
+    NOT_NULL: "not-null"
+}
+
+const OBJ_BUILTIN = {
+    type: Symbol("@type"),
+    platform: Symbol("@platform"),
+    tag: Symbol("@tag")
+}
+
 const PROXY_HANDLER = {
     get(target, p, receiver) {
+        if (typeof(p) === "symbol") {
+            for (const sym of OBJ_BUILTIN) {
+                if (p === OBJ_BUILTIN[sym]) {
+                    return target[sym];
+                }
+            }
+        }
         if (target.type.kind === "array") {
             if (p === "first") {
                 UNIMPLEMENTED();
@@ -198,7 +250,7 @@ const PROXY_HANDLER = {
             if (reaccessableMember.includes(memberName)) {
                 // reaccessable
                 if (p === parentType) {
-                    return createOneChild("reaccess", "sql", SQL_TABLE_TYPES[parentType], target);
+                    return createOneChild(OPERATORS.REACCESS, PLATFORMS.SQL, SQL_TABLE_TYPES[parentType], target);
                 }
             }
         }
@@ -206,30 +258,63 @@ const PROXY_HANDLER = {
         if (target.type.kind === "object") {
             if (target.type.member[p] !== undefined) {
                 // member access
-                return createOneChild("member-access", "both", target.type.member[p], target);
+                return createOneChild(OPERATORS.MEMBER_ACCESS, PLATFORMS.BOTH, target.type.member[p], target);
             }
         }
 
-        
+        // create new table entity
+        if (target.inf.globalTable && p === "new") {
+            return (obj) => {
+
+            };
+        }
+
+        if (target.type.kind !== "basic" && p == "isNull") {
+            return createOneChild(OPERATORS.IS_NULL, PLATFORMS.BOTH, BASIC_TYPES.Int, target);
+        }
+
+        if (target.type.kind !== "basic" && p == "isNotNull") {
+            return createOneChild(OPERATORS.NOT_NULL, PLATFORMS.BOTH, BASIC_TYPES.Int, target);
+        }
+
+        if (["eq", "lt", "le", "gt", "ge", "neq"].contains(p)) {
+            return (val) => {
+                if (typeEqual(target.type, val[OBJ_BUILTIN.type])) {
+
+                }
+            }
+        }
 
         UNREACHABLE();
     }
 }
 
-function createOneChild(tag, platform, type, value) {
+function createMultiChild(tag, platform, type, valueObj, inf = {}) {
     return new Proxy({
         platform,
         type,
         tag,
-        value
+        valueObj,
+        inf
     }, PROXY_HANDLER);
 }
 
-function createZeroChild(tag, platform, type) {
+function createOneChild(tag, platform, type, value, inf = {}) {
     return new Proxy({
         platform,
         type,
-        tag
+        tag,
+        value,
+        inf
+    }, PROXY_HANDLER);
+}
+
+function createZeroChild(tag, platform, type, inf = {}) {
+    return new Proxy({
+        platform,
+        type,
+        tag,
+        inf
     }, PROXY_HANDLER);
 }
 
@@ -237,61 +322,22 @@ function createVar(platform, type) {
     return createZeroChild("var", platform, type);
 }
 
-
-let TId = createVar("both", SQL_TABLE_TYPES.Table.member.Id);
-
-let curOrderItems = TId.Table.CurOrder.Items;
-
-console.log(curOrderItems);
-
-function filter(fn) {
-    let v = createVar("both", BASIC_TYPES.Int)
-
-    let ret = fn(v);
-
-    console.log(ret);
+for (const table of Object.keys(SQL_TABLE_TYPES)) {
+    globalThis[table] = createVar(PLATFORMS.SQL, ArrayOfType(SQL_TABLE_TYPES[table]), { globalTable: true });
 }
 
-/*let theOrderItem = curOrderItems.first(x => x.Food.Id.eq(FId));
-cond(
-    theOrderItem.ok(),
-    () => { theOrderItem.Count.selfAdd(Count); },
-    () => { curOrderItems.append(OrderItem.new({})); }
-)*/
-/*
-// TId
-let a = {
-    platform: "both",
-    tag: "var",
-    type: SQL_TABLE_TYPES.Table.member.Id,
+function functionProcess(fnName, fn, inputs) {
+    tableOrderAppend(...inputs);
 }
 
-// TId.Table
-let b = {
-    platform: "sql",
-    tag: "reaccess-by-unique",
-    value: a,
-    type: SQL_TABLE_TYPES.Table
+function tableOrderAppend(TId, FId, Count) {
+    let curOrderItems = TId.Table.CurOrder.Items;
+    let theOrderItem = curOrderItems.first(x => x.Food.Id.eq(FId));
+    theOrderItem.isNotNull().cond(
+        () => theOrderItem.Count.selfAdd(Count),
+        () => curOrderItems.append(OrderItem.new({
+            Food: FId.Food,
+            Count
+        }))
+    )
 }
-
-// TId.Table.CurOrder
-let c = {
-    platform: "sql",
-    tag: "foreign-access",
-    value: b,
-    type: SQL_TABLE_TYPES.Order
-}
-
-// TId.CurOrder.Items
-let d = {
-    platform: "both",
-    tag: "member-access",
-    value: d,
-    type: SQL_TABLE_TYPES.Order.member.Items
-}
-
-let e = {
-    platform: "both",
-    tag: "var",
-    type: SQL_TABLE_TYPES.Order.member.Items.type
-}*/
