@@ -1,7 +1,7 @@
 import sqlite3 from "sqlite3"
 import { rm } from "fs/promises"
 import { existsSync } from "fs"
-import { config } from "../config/config";
+import { config } from "../config/config.js";
 
 class DB {
     /**
@@ -51,6 +51,26 @@ class DB {
         });
         return p;
     }
+
+        /**
+     * 
+     * @param {string} sql 
+     * @param {object} param 
+     * @returns {Promise<any>}
+     */
+        async queryOne(sql, param) {
+            /** @type {Promise<any[]>} */
+            let p = new Promise((res, rej) => {
+                this.db.all(sql, param, function (err, rows) {
+                    if (err != null) {
+                        rej(err)
+                    } else {
+                        res(rows[0] ?? null)
+                    }
+                })
+            });
+            return p;
+        }
 
     /**
      * 

@@ -376,7 +376,7 @@ namespace SQLGen
                     }));
                 string primaryMember = $"\"primaryMember\":\"{t.PrimaryKey.FirstOrDefault()!.name}\"";
                 string uniqueMember = $"\"uniqueMember\":[{string.Join(",", t.fields.Where(f => f.IsUnique && !f.hidden).Select(f => $"\"{f.name}\""))}]";
-                return $"\"{t.name}\":{{\"kind\":\"object\",{primaryMember},{uniqueMember},\"member\":{{{member}}}}}";
+                return $"\"{t.name}\":{{\"kind\":\"object\",{primaryMember},{uniqueMember},\"typename\":\"{t.name}\",\"member\":{{{member}}}}}";
             }));
         }
     }

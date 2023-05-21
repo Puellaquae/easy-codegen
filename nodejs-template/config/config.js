@@ -8,7 +8,7 @@ import { readFileSync } from "fs"
  * }}
  */
 function loadConfig() {
-    return JSON.parse(readFileSync("./config.json"));
+    return JSON.parse(readFileSync("./config/config.json"));
 }
 
 const config = loadConfig();

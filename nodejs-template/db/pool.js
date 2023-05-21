@@ -1,6 +1,6 @@
 import genericPool from "generic-pool"
-import { DB } from "./db"
-import { config } from "../config/config"
+import { DB } from "./db.js"
+import { config } from "../config/config.js"
 
 const factory = {
     create: function () {
