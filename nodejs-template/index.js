@@ -12,5 +12,5 @@ router.get("/cate/:cid/goods", (ctx, next) => {
 });
 
 let db = await dbPool.acquire();
-let r = await db.queryOne('SELECT * FROM "Test" WHERE "Test"."Id" = (3)');
+let r = await db.query('SELECT * FROM "Test" WHERE NOT("Str" IS NULL)');
 console.log(r);
