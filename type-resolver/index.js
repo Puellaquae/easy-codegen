@@ -7,8 +7,8 @@ const nanoid = customAlphabet(nolookalikes, 12);
 const UTILS = {
     uniqueArray(arr) {
         return Array.from(new Set(arr));
-    }
-}
+    },
+};
 
 const SQL_TABLE_TYPES = {
     Img: {
@@ -279,8 +279,7 @@ const OPERATORS = {
     MAP: 'map',
     SUM: 'sum',
     COUNT: 'count',
-    SKIP: 'skip',
-    TAKE: 'take',
+    SLICE: 'slice',
     REACCESS: 'reacess',
     MEMBER_ACCESS: 'member-access',
     FOREIGN_MEMBER_ACCESS: 'foreign-member-access',
@@ -308,6 +307,7 @@ const OPERATORS = {
     APPEND: 'append',
     NEW: 'new',
     FUNC: 'func',
+    ASSERT: 'assert',
     // Specifial operator
     SQL_TO_HOST: 'sql-to-host',
 };
@@ -336,6 +336,7 @@ const PROXY_HANDLER = {
                     let fnE = functionProcess(fn, [
                         createVar(PLATFORMS.BOTH, target.type.type, {
                             name: `filter_${nanoid()}`,
+                            kind: 'filter-iter',
                         }),
                     ]);
                     if (typeEqual(fnE[RAW_DATA].type, BASIC_TYPES.Bool)) {
@@ -356,6 +357,7 @@ const PROXY_HANDLER = {
                     let fnE = functionProcess(fn, [
                         createVar(PLATFORMS.BOTH, target.type.type, {
                             name: `map_${nanoid()}`,
+                            kind: 'map-iter',
                         }),
                     ]);
                     if (typeEqual(fnE[RAW_DATA].type, BASIC_TYPES.Void)) {
@@ -392,67 +394,44 @@ const PROXY_HANDLER = {
                         target
                     );
                 };
-            } else if (p === 'skip') {
-                return (num) => {
-                    if (typeof num === 'number') {
-                        let n = createConst(
+            } else if (p === 'slice') {
+                return (off, len) => {
+                    let offE = null;
+                    if (typeof off === 'number') {
+                        offE = createConst(
                             PLATFORMS.BOTH,
                             BASIC_TYPES.Int,
-                            num
+                            off
                         );
-                        return createMultiChild(
-                            OPERATORS.SKIP,
-                            PLATFORMS.BOTH,
-                            target.type,
-                            {
-                                left: target,
-                                right: n,
-                            }
-                        );
+                    } else if (typeEqual(off[RAW_DATA].type, BASIC_TYPES.Int)) {
+                        offE = off;
+                    } else {
+                        TYPE_ERROR();
                     }
-                    if (typeEqual(num[RAW_DATA].type, BASIC_TYPES.Int)) {
-                        return createMultiChild(
-                            OPERATORS.SKIP,
-                            PLATFORMS.BOTH,
-                            target.type,
-                            {
-                                left: target,
-                                right: num[RAW_DATA],
-                            }
-                        );
-                    }
-                    TYPE_ERROR();
-                };
-            } else if (p === 'take') {
-                return (num) => {
-                    if (typeof num === 'number') {
-                        let n = createConst(
+
+                    let lenE = null;
+                    if (typeof len === 'number') {
+                        lenE = createConst(
                             PLATFORMS.BOTH,
                             BASIC_TYPES.Int,
-                            num
+                            len
                         );
-                        return createMultiChild(
-                            OPERATORS.TAKE,
-                            PLATFORMS.BOTH,
-                            target.type,
-                            {
-                                left: target,
-                                right: n,
-                            }
-                        );
+                    } else if (typeEqual(len[RAW_DATA].type, BASIC_TYPES.Int)) {
+                        lenE = len;
+                    } else {
+                        TYPE_ERROR();
                     }
-                    if (typeEqual(num[RAW_DATA].type, BASIC_TYPES.Int)) {
-                        return createMultiChild(
-                            OPERATORS.TAKE,
-                            PLATFORMS.BOTH,
-                            target.type,
-                            {
-                                left: target,
-                                right: num[RAW_DATA],
-                            }
-                        );
-                    }
-                    TYPE_ERROR();
+
+                    return createMultiChild(
+                        OPERATORS.SLICE,
+                        PLATFORMS.BOTH,
+                        target.type,
+                        {
+                            src: target,
+                            off: offE[RAW_DATA],
+                            len: lenE[RAW_DATA],
+                        }
+                    );
                 };
             } else if (p === 'append') {
                 return (val) => {
@@ -687,6 +666,7 @@ const PROXY_HANDLER = {
                         PLATFORMS.HOST,
                         bt.type,
                         {
+                            cond: target,
                             true: branchTrue,
                             false: branchFalse,
                         }
@@ -800,12 +780,21 @@ const PROXY_HANDLER = {
 
         if (typeEqual(target.type, BASIC_TYPES.Bool)) {
             if (p === 'assert') {
-                return () => {
-                    let e = createOneChild(
+                return (msg) => {
+                    if (msg === undefined) {
+                        msg = "";
+                    }
+
+                    assert(typeof(msg) === "string")
+
+                    let e = createMultiChild(
                         OPERATORS.ASSERT,
                         PLATFORMS.HOST,
                         BASIC_TYPES.Void,
-                        target
+                        {
+                            check: target,
+                            msg
+                        }
                     );
                     effectExprs.push(e);
                 };
@@ -960,6 +949,19 @@ function checkCtx(ctx) {
     }
 }
 
+/**
+ *
+ * @param {string} e
+ * @returns {string}
+ */
+const fromExpr = (e) => {
+    if (e.startsWith('SELECT')) {
+        return `(${e})`;
+    } else {
+        return e;
+    }
+};
+
 const CODE_GENERATORS = {
     [OPERATORS.VAR](ctx, expr, platformRequire = PLATFORMS.BOTH) {
         assert(expr.tag === OPERATORS.VAR);
@@ -996,7 +998,7 @@ const CODE_GENERATORS = {
                     platform: PLATFORMS.SQL,
                     sqlParams: [],
                     type: expr.type,
-                    expr: expr.type.type.typename,
+                    expr: `"${expr.type.type.typename}"`,
                 };
             } else {
                 assert(ctx.vars.map((v) => v.name).includes(expr.inf.name));
@@ -1161,7 +1163,54 @@ const CODE_GENERATORS = {
         assert(expr.tag === OPERATORS.FIRST);
         checkCtx(ctx);
 
-        TODO();
+        if (platformRequire === PLATFORMS.BOTH) {
+            platformRequire = PLATFORMS.HOST;
+        }
+
+        if (platformRequire === PLATFORMS.HOST) {
+            let target = expr.value;
+            let targetHost = CODE_GENERATORS[target.tag](
+                ctx,
+                target,
+                PLATFORMS.HOST
+            );
+
+            if (targetHost === null) {
+                let targetSql = CODE_GENERATORS[target.tag](
+                    ctx,
+                    target,
+                    PLATFORMS.SQL
+                );
+                targetHost = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](
+                    ctx,
+                    targetSql
+                );
+            }
+
+            return {
+                platform: PLATFORMS.HOST,
+                type: expr.type,
+                expr: `(${targetHost.expr})[0]`,
+            };
+        } else {
+            let target = expr.value;
+            let targetSql = CODE_GENERATORS[target.tag](
+                ctx,
+                target,
+                PLATFORMS.SQL
+            );
+
+            if (targetSql === null) {
+                return null;
+            }
+
+            return {
+                sqlParams: targetSql.sqlParams,
+                type: expr.type,
+                platform: PLATFORMS.SQL,
+                expr: `${targetSql.expr} LIMIT 1`,
+            };
+        }
     },
     [OPERATORS.FILTER](ctx, expr, platformRequire = PLATFORMS.BOTH) {
         assert(expr.tag === OPERATORS.FILTER);
@@ -1191,7 +1240,31 @@ const CODE_GENERATORS = {
             return {
                 platform: PLATFORMS.HOST,
                 type: expr.type,
-                expr: `(${ele.expr}).filter(${ere.expr})`
+                expr: `(${ele.expr}).filter(${ere.expr})`,
+            };
+        } else {
+            let el = expr.valueObj.left;
+            let er = expr.valueObj.right;
+
+            let ele = CODE_GENERATORS[el.tag](ctx, el, PLATFORMS.SQL);
+            let ere = CODE_GENERATORS[er.tag](ctx, er, PLATFORMS.SQL);
+
+            if (ele === null) {
+                return null;
+            }
+
+            if (ere === null) {
+                return null;
+            }
+
+            return {
+                sqlParams: UTILS.uniqueArray([
+                    ...(ele.sqlParams ?? []),
+                    ...(ere.sqlParams ?? []),
+                ]),
+                platform: PLATFORMS.SQL,
+                type: expr.type,
+                expr: `(${ele.expr}) WHERE (${ere.expr})`,
             };
         }
     },
@@ -1199,31 +1272,205 @@ const CODE_GENERATORS = {
         assert(expr.tag === OPERATORS.MAP);
         checkCtx(ctx);
 
-        TODO();
+        if (platformRequire === PLATFORMS.BOTH) {
+            platformRequire = PLATFORMS.HOST;
+        }
+
+        if (platformRequire === PLATFORMS.HOST) {
+            let el = expr.valueObj.left;
+            let er = expr.valueObj.right;
+
+            let ele = CODE_GENERATORS[el.tag](ctx, el, PLATFORMS.HOST);
+            let ere = CODE_GENERATORS[er.tag](ctx, er, PLATFORMS.HOST);
+
+            if (ele === null) {
+                let elsql = CODE_GENERATORS[el.tag](ctx, el, PLATFORMS.SQL);
+                ele = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, elsql);
+            }
+
+            if (ere === null) {
+                let ersql = CODE_GENERATORS[er.tag](ctx, er, PLATFORMS.SQL);
+                ere = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, ersql);
+            }
+
+            return {
+                platform: PLATFORMS.HOST,
+                type: expr.type,
+                expr: `(${ele.expr}).map(${ere.expr})`,
+            };
+        } else {
+            let el = expr.valueObj.left;
+            let er = expr.valueObj.right;
+
+            let ele = CODE_GENERATORS[el.tag](ctx, el, PLATFORMS.SQL);
+            let ere = CODE_GENERATORS[er.tag](ctx, er, PLATFORMS.SQL);
+
+            if (ele === null) {
+                return null;
+            }
+
+            if (ere === null) {
+                return null;
+            }
+
+            return {
+                sqlParams: UTILS.uniqueArray([
+                    ...(ele.sqlParams ?? []),
+                    ...(ere.sqlParams ?? []),
+                ]),
+                platform: PLATFORMS.SQL,
+                type: expr.type,
+                expr: `SELECT (${ere.expr}) FROM ${fromExpr(ele.expr)}`,
+            };
+        }
     },
     [OPERATORS.SUM](ctx, expr, platformRequire = PLATFORMS.BOTH) {
         assert(expr.tag === OPERATORS.SUM);
         checkCtx(ctx);
 
-        TODO();
+        if (platformRequire === PLATFORMS.BOTH) {
+            platformRequire = PLATFORMS.HOST;
+        }
+
+        let target = expr.value;
+        if (platformRequire === PLATFORMS.HOST) {
+            let host = CODE_GENERATORS[target.tag](ctx, target, PLATFORMS.HOST);
+
+            if (host === null) {
+                let sql = CODE_GENERATORS[target.tag](
+                    ctx,
+                    target,
+                    PLATFORMS.SQL
+                );
+                host = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, sql);
+            }
+
+            return {
+                platform: PLATFORMS.HOST,
+                type: expr.type,
+                expr: `utils.sum(${host.expr})`,
+            };
+        } else {
+            let sql = CODE_GENERATORS[target.tag](ctx, target, PLATFORMS.SQL);
+
+            if (sql === null) {
+                return null;
+            }
+
+            const getSumIdentName = (name) => {
+                let [p, m] = name.split('.');
+                if (m === undefined) {
+                    return p;
+                }
+                return m;
+            };
+
+            return {
+                platform: PLATFORMS.SQL,
+                sqlParams: sql.sqlParams,
+                type: expr.type,
+                expr: `SELECT SUM("${getSumIdentName(
+                    target.type.type.typename
+                )}") FROM ${fromExpr(sql.expr)}`,
+            };
+        }
     },
     [OPERATORS.COUNT](ctx, expr, platformRequire = PLATFORMS.BOTH) {
         assert(expr.tag === OPERATORS.COUNT);
         checkCtx(ctx);
 
-        TODO();
+        if (platformRequire === PLATFORMS.BOTH) {
+            platformRequire = PLATFORMS.HOST;
+        }
+
+        let target = expr.value;
+        if (platformRequire === PLATFORMS.HOST) {
+            let host = CODE_GENERATORS[target.tag](ctx, target, PLATFORMS.HOST);
+
+            if (host === null) {
+                let sql = CODE_GENERATORS[target.tag](
+                    ctx,
+                    target,
+                    PLATFORMS.SQL
+                );
+                host = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, sql);
+            }
+
+            return {
+                platform: PLATFORMS.HOST,
+                type: expr.type,
+                expr: `(${host.expr}).length`,
+            };
+        } else {
+            let sql = CODE_GENERATORS[target.tag](ctx, target, PLATFORMS.SQL);
+
+            if (sql === null) {
+                return null;
+            }
+
+            return {
+                platform: PLATFORMS.SQL,
+                sqlParams: sql.sqlParams,
+                type: expr.type,
+                expr: `SELECT COUNT(*) FROM ${fromExpr(sql.expr)}`,
+            };
+        }
     },
-    [OPERATORS.SKIP](ctx, expr, platformRequire = PLATFORMS.BOTH) {
-        assert(expr.tag === OPERATORS.SKIP);
+    [OPERATORS.SLICE](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+        assert(expr.tag === OPERATORS.SLICE);
         checkCtx(ctx);
 
-        TODO();
-    },
-    [OPERATORS.TAKE](ctx, expr, platformRequire = PLATFORMS.BOTH) {
-        assert(expr.tag === OPERATORS.TAKE);
-        checkCtx(ctx);
+        if (platformRequire === PLATFORMS.BOTH) {
+            platformRequire = PLATFORMS.HOST;
+        }
 
-        TODO();
+        if (platformRequire === PLATFORMS.HOST) {
+            let { src, off, len } = expr.valueObj;
+
+            let [srcHost, offHost, lenHost] = [src, off, len].map((e) => {
+                let host = CODE_GENERATORS[e.tag](ctx, e, PLATFORMS.HOST);
+                if (host === null) {
+                    let sql = CODE_GENERATORS[e.tag](ctx, e, PLATFORMS.SQL);
+                    host = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, sql);
+                }
+                return host;
+            });
+
+            return {
+                platform: PLATFORMS.HOST,
+                type: expr.type,
+                expr: `(${srcHost.expr}).slice((${offHost.expr}), (${offHost.expr}) + (${lenHost.expr}))`,
+            };
+        } else {
+            let { src, off, len } = expr.valueObj;
+
+            let [srcSql, offSql, lenSql] = [src, off, len].map((e) =>
+                CODE_GENERATORS[e.tag](ctx, e, PLATFORMS.SQL)
+            );
+
+            if (srcSql === null) {
+                return null;
+            }
+
+            if (offSql === null) {
+                return null;
+            }
+
+            if (lenSql === null) {
+                return null;
+            }
+
+            return {
+                sqlParams: UTILS.uniqueArray([
+                    ...(srcSql.sqlParams ?? []),
+                    ...(offSql.sqlParams ?? []),
+                    ...(lenSql.sqlParams ?? []),
+                ]),
+                type: expr.type,
+                platform: PLATFORMS.SQL,
+                expr: `${srcSql.expr} LIMIT (${lenSql.expr}) OFFSET (${offSql.expr})`,
+            };
+        }
     },
     [OPERATORS.FOREIGN_MEMBER_ACCESS](
         ctx,
@@ -1233,7 +1480,14 @@ const CODE_GENERATORS = {
         assert(expr.tag === OPERATORS.FOREIGN_MEMBER_ACCESS);
         checkCtx(ctx);
 
-        TODO();
+        if (platformRequire === PLATFORMS.BOTH) {
+            platformRequire = PLATFORMS.SQL;
+        }
+
+        if (platformRequire === PLATFORMS.SQL) {
+        } else {
+            return null;
+        }
     },
     [OPERATORS.ARRAY_MEMBER_ACCESS](
         ctx,
@@ -1243,7 +1497,14 @@ const CODE_GENERATORS = {
         assert(expr.tag === OPERATORS.ARRAY_MEMBER_ACCESS);
         checkCtx(ctx);
 
-        TODO();
+        if (platformRequire === PLATFORMS.BOTH) {
+            platformRequire = PLATFORMS.SQL;
+        }
+
+        if (platformRequire === PLATFORMS.SQL) {
+        } else {
+            return null;
+        }
     },
     [OPERATORS.IS_NULL](ctx, expr, platformRequire = PLATFORMS.BOTH) {
         assert(expr.tag === OPERATORS.IS_NULL);
@@ -1376,7 +1637,10 @@ const CODE_GENERATORS = {
 
             return {
                 platform: PLATFORMS.SQL,
-                sqlParams: UTILS.uniqueArray([...(el.sqlParams ?? []), ...(er.sqlParams ?? [])]),
+                sqlParams: UTILS.uniqueArray([
+                    ...(el.sqlParams ?? []),
+                    ...(er.sqlParams ?? []),
+                ]),
                 type: expr.type,
                 expr: `(${el.expr}) == (${er.expr})`,
             };
@@ -1437,7 +1701,10 @@ const CODE_GENERATORS = {
 
             return {
                 platform: PLATFORMS.SQL,
-                sqlParams: UTILS.uniqueArray([...(el.sqlParams ?? []), ...(er.sqlParams ?? [])]),
+                sqlParams: UTILS.uniqueArray([
+                    ...(el.sqlParams ?? []),
+                    ...(er.sqlParams ?? []),
+                ]),
                 type: expr.type,
                 expr: `(${el.expr}) != (${er.expr})`,
             };
@@ -1498,7 +1765,10 @@ const CODE_GENERATORS = {
 
             return {
                 platform: PLATFORMS.SQL,
-                sqlParams: UTILS.uniqueArray([...(el.sqlParams ?? []), ...(er.sqlParams ?? [])]),
+                sqlParams: UTILS.uniqueArray([
+                    ...(el.sqlParams ?? []),
+                    ...(er.sqlParams ?? []),
+                ]),
                 type: expr.type,
                 expr: `(${el.expr}) < (${er.expr})`,
             };
@@ -1559,7 +1829,10 @@ const CODE_GENERATORS = {
 
             return {
                 platform: PLATFORMS.SQL,
-                sqlParams: UTILS.uniqueArray([...(el.sqlParams ?? []), ...(er.sqlParams ?? [])]),
+                sqlParams: UTILS.uniqueArray([
+                    ...(el.sqlParams ?? []),
+                    ...(er.sqlParams ?? []),
+                ]),
                 type: expr.type,
                 expr: `(${el.expr}) <= (${er.expr})`,
             };
@@ -1620,7 +1893,10 @@ const CODE_GENERATORS = {
 
             return {
                 platform: PLATFORMS.SQL,
-                sqlParams: UTILS.uniqueArray([...(el.sqlParams ?? []), ...(er.sqlParams ?? [])]),
+                sqlParams: UTILS.uniqueArray([
+                    ...(el.sqlParams ?? []),
+                    ...(er.sqlParams ?? []),
+                ]),
                 type: expr.type,
                 expr: `(${el.expr}) > (${er.expr})`,
             };
@@ -1681,7 +1957,10 @@ const CODE_GENERATORS = {
 
             return {
                 platform: PLATFORMS.SQL,
-                sqlParams: UTILS.uniqueArray([...(el.sqlParams ?? []), ...(er.sqlParams ?? [])]),
+                sqlParams: UTILS.uniqueArray([
+                    ...(el.sqlParams ?? []),
+                    ...(er.sqlParams ?? []),
+                ]),
                 type: expr.type,
                 expr: `(${el.expr}) >= (${er.expr})`,
             };
@@ -1742,7 +2021,10 @@ const CODE_GENERATORS = {
 
             return {
                 platform: PLATFORMS.SQL,
-                sqlParams: UTILS.uniqueArray([...(el.sqlParams ?? []), ...(er.sqlParams ?? [])]),
+                sqlParams: UTILS.uniqueArray([
+                    ...(el.sqlParams ?? []),
+                    ...(er.sqlParams ?? []),
+                ]),
                 type: expr.type,
                 expr: `(${el.expr}) LIKE (${er.expr})`,
             };
@@ -1803,7 +2085,10 @@ const CODE_GENERATORS = {
 
             return {
                 platform: PLATFORMS.SQL,
-                sqlParams: UTILS.uniqueArray([...(el.sqlParams ?? []), ...(er.sqlParams ?? [])]),
+                sqlParams: UTILS.uniqueArray([
+                    ...(el.sqlParams ?? []),
+                    ...(er.sqlParams ?? []),
+                ]),
                 type: expr.type,
                 expr: `(${el.expr}) AND (${er.expr})`,
             };
@@ -1864,7 +2149,10 @@ const CODE_GENERATORS = {
 
             return {
                 platform: PLATFORMS.SQL,
-                sqlParams: UTILS.uniqueArray([...(el.sqlParams ?? []), ...(er.sqlParams ?? [])]),
+                sqlParams: UTILS.uniqueArray([
+                    ...(el.sqlParams ?? []),
+                    ...(er.sqlParams ?? []),
+                ]),
                 type: expr.type,
                 expr: `(${el.expr}) OR (${er.expr})`,
             };
@@ -1925,7 +2213,10 @@ const CODE_GENERATORS = {
 
             return {
                 platform: PLATFORMS.SQL,
-                sqlParams: UTILS.uniqueArray([...(el.sqlParams ?? []), ...(er.sqlParams ?? [])]),
+                sqlParams: UTILS.uniqueArray([
+                    ...(el.sqlParams ?? []),
+                    ...(er.sqlParams ?? []),
+                ]),
                 type: expr.type,
                 expr: `(${el.expr}) + (${er.expr})`,
             };
@@ -1986,7 +2277,10 @@ const CODE_GENERATORS = {
 
             return {
                 platform: PLATFORMS.SQL,
-                sqlParams: UTILS.uniqueArray([...(el.sqlParams ?? []), ...(er.sqlParams ?? [])]),
+                sqlParams: UTILS.uniqueArray([
+                    ...(el.sqlParams ?? []),
+                    ...(er.sqlParams ?? []),
+                ]),
                 type: expr.type,
                 expr: `(${el.expr}) - (${er.expr})`,
             };
@@ -2047,7 +2341,10 @@ const CODE_GENERATORS = {
 
             return {
                 platform: PLATFORMS.SQL,
-                sqlParams: UTILS.uniqueArray([...(el.sqlParams ?? []), ...(er.sqlParams ?? [])]),
+                sqlParams: UTILS.uniqueArray([
+                    ...(el.sqlParams ?? []),
+                    ...(er.sqlParams ?? []),
+                ]),
                 type: expr.type,
                 expr: `(${el.expr}) * (${er.expr})`,
             };
@@ -2108,7 +2405,10 @@ const CODE_GENERATORS = {
 
             return {
                 platform: PLATFORMS.SQL,
-                sqlParams: UTILS.uniqueArray([...(el.sqlParams ?? []), ...(er.sqlParams ?? [])]),
+                sqlParams: UTILS.uniqueArray([
+                    ...(el.sqlParams ?? []),
+                    ...(er.sqlParams ?? []),
+                ]),
                 type: expr.type,
                 expr: `(${el.expr}) / (${er.expr})`,
             };
@@ -2142,7 +2442,48 @@ const CODE_GENERATORS = {
         assert(expr.tag === OPERATORS.COND);
         checkCtx(ctx);
 
-        TODO();
+        if (platformRequire === PLATFORMS.BOTH) {
+            platformRequire = PLATFORMS.HOST;
+        }
+
+        if (platformRequire === PLATFORMS.HOST) {
+            let cond = expr.value.cond;
+            let bt = expr.valueObj.true;
+            let bf = expr.valueObj.false;
+
+            let ce = CODE_GENERATORS[cond.tag](ctx, cond, PLATFORMS.HOST);
+            let bte = CODE_GENERATORS[bt.tag](ctx, bt, PLATFORMS.HOST);
+            let bfe = CODE_GENERATORS[bf.tag](ctx, bf, PLATFORMS.HOST);
+
+            if (ce === null) {
+                let cs = CODE_GENERATORS[cond.tag](ctx, cond, PLATFORMS.SQL);
+                ce = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, cs);
+            }
+
+            if (bte === null) {
+                let bts = CODE_GENERATORS[bt.tag](ctx, bt, PLATFORMS.SQL);
+                bte = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, bts);
+            }
+
+            if (bfe === null) {
+                let bfs = CODE_GENERATORS[bf.tag](ctx, bf, PLATFORMS.SQL);
+                bfe = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, bfs);
+            }
+
+            return {
+                platform: PLATFORMS.HOST,
+                type: expr.type,
+                expr: `
+                (() => {if (${ce.expr}) {
+                    return (${bte.expr})();
+                } else { 
+                    return (${bfe.expr})(); 
+                }})()
+                `,
+            };
+        } else {
+            return null;
+        }
     },
     [OPERATORS.APPEND](ctx, expr, platformRequire = PLATFORMS.BOTH) {
         assert(expr.tag === OPERATORS.APPEND);
@@ -2263,6 +2604,39 @@ const CODE_GENERATORS = {
             }
         }
     },
+    [OPERATORS.ASSERT](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+        assert(expr.tag === OPERATORS.ASSERT);
+        checkCtx(ctx);
+
+        if (platformRequire === PLATFORMS.BOTH) {
+            platformRequire = PLATFORMS.HOST
+        }
+
+        if (platformRequire === PLATFORMS.SQL) {
+            return null;
+        }
+
+        let check = expr.valueObj.check;
+        let msg = expr.valueObj.msg;
+
+        let host = CODE_GENERATORS[check.tag](ctx, check, PLATFORMS.HOST);
+        if (host === null) {
+            let sql = CODE_GENERATORS[check.tag](ctx, check, PLATFORMS.SQL);
+            host = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, sql);
+        }
+
+        return {
+            platform: PLATFORMS.HOST,
+            type: expr.type,
+            expr: `
+                (() => {
+                    if (!(${host.expr})) { 
+                        throw new Error("${msg}")
+                    }
+                })()
+            `
+        }
+    }
 };
 
 /**
@@ -2307,13 +2681,17 @@ let f = functionGenerate(
 console.log(f.join('\n\n'));
 
 sqlGenerateTest(
-    (x) => x.Price.eq(233).and(x.Id.lt(12)),
-    [
-        {
-            name: '"Food"',
-            val: createVar(PLATFORMS.SQL, SQL_TABLE_TYPES.Food, {
-                name: '"Food"',
-            }),
-        },
-    ]
+    () =>
+        Food.slice(1, 10)
+            .map((f) => f.Id.add(13))
+            .sum(),
+    []
+);
+sqlGenerateTest(
+    () =>
+        Food.filter((f) => f.Id.add(13).lt(13))
+            .map((f) => f.Id)
+            .slice(1, 10)
+            .sum(),
+    []
 );

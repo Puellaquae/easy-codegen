@@ -12,5 +12,5 @@ router.get("/cate/:cid/goods", (ctx, next) => {
 });
 
 let db = await dbPool.acquire();
-let r = await db.query('SELECT * FROM "Test" WHERE Id != 2');
+let r = await db.query('SELECT SUM(Id) FROM (SELECT Test.Id FROM "Test" LIMIT 10 OFFSET 0)');
 console.log(r);

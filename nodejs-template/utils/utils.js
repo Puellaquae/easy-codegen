@@ -15,3 +15,12 @@ function like(str, pattern) {
     const regex = new RegExp("^" + pattern + "$", "i");
     return regex.test(str);
 }
+
+/**
+ * 
+ * @param {T[]} arr 
+ * @returns {T}
+ */
+function sum(arr) {
+    return arr.reduce((p, c, _i, _a) => p + c);
+}
