@@ -97,7 +97,7 @@ namespace SQLGen
                     {
                         Table linkTable = field.userDef!;
                         table.arrayLink.Add(linkTable);
-                        Table newTable = new($"{table.name}.{field.name}.{linkTable.name}")
+                        Table newTable = new($"{table.name}-{field.name}-{linkTable.name}")
                         {
                             Hidden = true,
                         };
@@ -107,13 +107,13 @@ namespace SQLGen
                         Field rightPriKey = linkTable.PrimaryKey.First();
                         if (field.IsUnique)
                         {
-                            newTable.AddField(new Field(newTable, $"{table.name}:l:{leftPriKey.name}", leftPriKey.type)
+                            newTable.AddField(new Field(newTable, $"L.{table.name}.{leftPriKey.name}", leftPriKey.type)
                             {
                                 IsPrimaryKey = true,
                                 isForeignKey = true,
                                 foreignLink = leftPriKey
                             });
-                            newTable.AddField(new Field(newTable, $"{linkTable.name}:r:{rightPriKey.name}", rightPriKey.type)
+                            newTable.AddField(new Field(newTable, $"R.{linkTable.name}.{rightPriKey.name}", rightPriKey.type)
                             {
                                 IsPrimaryKey = true,
                                 isForeignKey = true,
@@ -122,12 +122,12 @@ namespace SQLGen
                         }
                         else if (field.IsNullable)
                         {
-                            newTable.AddField(new Field(newTable, $"{table.name}:l:{leftPriKey.name}", leftPriKey.type)
+                            newTable.AddField(new Field(newTable, $"L.{table.name}.{leftPriKey.name}", leftPriKey.type)
                             {
                                 isForeignKey = true,
                                 foreignLink = leftPriKey
                             });
-                            newTable.AddField(new Field(newTable, $"{linkTable.name}:r:{rightPriKey.name}", rightPriKey.type)
+                            newTable.AddField(new Field(newTable, $"R.{linkTable.name}.{rightPriKey.name}", rightPriKey.type)
                             {
                                 IsNullable = true,
                                 isForeignKey = true,
@@ -136,12 +136,12 @@ namespace SQLGen
                         }
                         else
                         {
-                            newTable.AddField(new Field(newTable, $"{table.name}:l:{leftPriKey.name}", leftPriKey.type)
+                            newTable.AddField(new Field(newTable, $"L.{table.name}.{leftPriKey.name}", leftPriKey.type)
                             {
                                 isForeignKey = true,
                                 foreignLink = leftPriKey
                             });
-                            newTable.AddField(new Field(newTable, $"{linkTable.name}:r:{rightPriKey.name}", rightPriKey.type)
+                            newTable.AddField(new Field(newTable, $"R.{linkTable.name}.{rightPriKey.name}", rightPriKey.type)
                             {
                                 isForeignKey = true,
                                 foreignLink = rightPriKey
@@ -150,7 +150,7 @@ namespace SQLGen
                     }
                     else if (field.IsArrayOfType)
                     {
-                        Table dataTable = new($"{table.name}.{field.name}.{field.TypeName}")
+                        Table dataTable = new($"{table.name}-{field.name}-{field.TypeName}")
                         {
                             Hidden = true
                         };
@@ -160,37 +160,37 @@ namespace SQLGen
                         Field leftPriKey = table.PrimaryKey.First();
                         if (field.IsUnique)
                         {
-                            dataTable.AddField(new Field(dataTable, $"{table.name}::{leftPriKey.name}", leftPriKey.type)
+                            dataTable.AddField(new Field(dataTable, $"{table.name}.{leftPriKey.name}", leftPriKey.type)
                             {
                                 IsPrimaryKey = true,
                                 isForeignKey = true,
                                 foreignLink = leftPriKey
                             });
-                            dataTable.AddField(new Field(dataTable, $"{table.name}::{leftPriKey.name}.value", field.type)
+                            dataTable.AddField(new Field(dataTable, $"Value", field.type)
                             {
                                 IsPrimaryKey = true,
                             });
                         }
                         else if (field.IsNullable)
                         {
-                            dataTable.AddField(new Field(dataTable, $"{table.name}::{leftPriKey.name}", leftPriKey.type)
+                            dataTable.AddField(new Field(dataTable, $"{table.name}.{leftPriKey.name}", leftPriKey.type)
                             {
                                 isForeignKey = true,
                                 foreignLink = leftPriKey
                             });
-                            dataTable.AddField(new Field(dataTable, $"{table.name}::{leftPriKey.name}.value", field.type)
+                            dataTable.AddField(new Field(dataTable, $"Value", field.type)
                             {
                                 IsNullable = true,
                             });
                         }
                         else
                         {
-                            dataTable.AddField(new Field(dataTable, $"{table.name}::{leftPriKey.name}", leftPriKey.type)
+                            dataTable.AddField(new Field(dataTable, $"{table.name}.{leftPriKey.name}", leftPriKey.type)
                             {
                                 isForeignKey = true,
                                 foreignLink = leftPriKey
                             });
-                            dataTable.AddField(new Field(dataTable, $"{table.name}::{leftPriKey.name}.value", field.type));
+                            dataTable.AddField(new Field(dataTable, $"Value", field.type));
                         }
                     }
                 }
@@ -374,7 +374,8 @@ namespace SQLGen
                             return $"\"{f.name}\":{{\"kind\":\"unit\",\"typename\":\"{f.SQLType}\"{alias}}}";
                         }
                     }));
-                string primaryMember = $"\"primaryMember\":\"{t.PrimaryKey.FirstOrDefault()!.name}\"";
+                var priKey = t.PrimaryKey.FirstOrDefault()!;
+                string primaryMember = $"\"primaryMember\":\"{priKey.name}\",\"primaryAuto\":{priKey.IsAutoIncrement.ToString().ToLower()}";
                 string uniqueMember = $"\"uniqueMember\":[{string.Join(",", t.fields.Where(f => f.IsUnique && !f.hidden).Select(f => $"\"{f.name}\""))}]";
                 return $"\"{t.name}\":{{\"kind\":\"object\",{primaryMember},{uniqueMember},\"typename\":\"{t.name}\",\"member\":{{{member}}}}}";
             }));

@@ -1,16 +1,24 @@
-import koa from "koa"
-import koaRouter from "koa-router"
-import { dbPool } from "./db/pool.js";
+import koa from 'koa';
+import koaRouter from 'koa-router';
+import { dbPool } from './db/pool.js';
+import * as utils from "./utils/utils.js";
 
 let app = new koa();
 let router = new koaRouter();
 
-router.get("/cate/:cid/goods", (ctx, next) => {
+router.get('/cate/:cid/goods', (ctx, next) => {
     let cid = ctx.params.cid;
-    let params = ctx.query
-    let ret = func(cid)
+    let params = ctx.query;
+    let ret = func(cid);
 });
 
-let db = await dbPool.acquire();
-let r = await db.query('SELECT SUM(Id) FROM (SELECT Test.Id FROM "Test" LIMIT 10 OFFSET 0)');
-console.log(r);
+const User_NameArray_SQLGet_9YWqqPtDLegK = async () => {
+    let db = await dbPool.acquire();
+    return db.queryElem(
+        `SELECT * FROM (SELECT ("User"."Name") FROM "User" WHERE (("User"."Id") == (1))) WHERE (("Name") LIKE ('%S%'))`
+    );
+};
+
+const test = async () => await User_NameArray_SQLGet_9YWqqPtDLegK();
+
+console.log(await test());

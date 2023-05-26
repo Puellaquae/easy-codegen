@@ -1,31 +1,30 @@
-entity Product {
+entity User {
     Name: String
-    Description: ?String
-    Stock: Int
-    Price: Int
+    UserName: @String
+    PassWord: String
 }
 
-entity OrderItem {
-    Product: Product
-    Count: Int    
+entity Token {
+    UID: @String
+    ForUser: User
+}
+
+entity Auth {
+    ForUser: User
+    Permissions: [@String]
+}
+
+entity Commodity {
+    Owner: User
+    Name: String
+    Description: String
+    Price: Int
+    Stock: Int
 }
 
 entity Order {
-    Items: [@OrderItem]
-    Date: Int
+    Commodity: Commodity
+    Count: Int
+    TotPrice: Int
+    Buyer: User
 }
-
-const OrderDao.Orders() => all("SELECT * FROM Order")
-
-fn Orders() -> [Order] {
-    let ret = OrderDao.Orders()
-    return ret;
-}
-
-
-
-fn NewProduct(Name: String, Description: ?String, Stock: Int, Price: Int) {
-    (append Product (create Product Name Description Stock Price))
-}
-
-

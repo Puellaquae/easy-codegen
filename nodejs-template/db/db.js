@@ -1,19 +1,19 @@
-import sqlite3 from "sqlite3"
-import { rm } from "fs/promises"
-import { existsSync } from "fs"
-import { config } from "../config/config.js";
+import sqlite3 from 'sqlite3';
+import { rm } from 'fs/promises';
+import { existsSync } from 'fs';
+import { config } from '../config/config.js';
 
 class DB {
     /**
-     * 
-     * @param {string} path 
+     *
+     * @param {string} path
      */
     constructor(path) {
         this.db = new sqlite3.Database(path);
     }
 
     /**
-     * 
+     *
      * @param {string} sql
      * @param {object} param
      * @returns {Promise<void>}
@@ -23,19 +23,19 @@ class DB {
         let p = new Promise((res, rej) => {
             this.db.run(sql, param, function (err) {
                 if (err != null) {
-                    rej(err)
+                    rej(err);
                 } else {
-                    res()
+                    res();
                 }
-            })
+            });
         });
         return p;
     }
 
     /**
-     * 
-     * @param {string} sql 
-     * @param {object} param 
+     *
+     * @param {string} sql
+     * @param {object} param
      * @returns {Promise<any[]>}
      */
     async query(sql, param) {
@@ -43,19 +43,19 @@ class DB {
         let p = new Promise((res, rej) => {
             this.db.all(sql, param, function (err, rows) {
                 if (err != null) {
-                    rej(err)
+                    rej(err);
                 } else {
-                    res(rows)
+                    res(rows);
                 }
-            })
+            });
         });
         return p;
     }
 
     /**
-     * 
-     * @param {string} sql 
-     * @param {object} param 
+     *
+     * @param {string} sql
+     * @param {object} param
      * @returns {Promise<any>}
      */
     async queryOne(sql, param) {
@@ -63,19 +63,19 @@ class DB {
         let p = new Promise((res, rej) => {
             this.db.all(sql, param, function (err, rows) {
                 if (err != null) {
-                    rej(err)
+                    rej(err);
                 } else {
-                    res(rows[0] ?? null)
+                    res(rows[0] ?? null);
                 }
-            })
+            });
         });
         return p;
     }
 
     /**
-     * 
-     * @param {string} sql 
-     * @param {object} param 
+     *
+     * @param {string} sql
+     * @param {object} param
      * @returns {Promise<any>}
      */
     async queryOneElem(sql, param) {
@@ -83,7 +83,7 @@ class DB {
         let p = new Promise((res, rej) => {
             this.db.all(sql, param, function (err, rows) {
                 if (err != null) {
-                    rej(err)
+                    rej(err);
                 } else {
                     let first = rows[0];
                     if (first === undefined) {
@@ -97,13 +97,36 @@ class DB {
                     }
                     res(first[key]);
                 }
-            })
+            });
         });
         return p;
     }
 
     /**
-     * 
+     *
+     * @param {string} sql
+     * @param {object} param
+     * @returns {Promise<any>}
+     */
+    async queryElem(sql, param) {
+        /** @type {Promise<any[]>} */
+        let p = new Promise((res, rej) => {
+            this.db.all(sql, param, function (err, rows) {
+                if (err != null) {
+                    rej(err);
+                } else {
+                    res(rows.map(r => {
+                        let key = Object.keys(r)[0];
+                        return r[key];
+                    }));
+                }
+            });
+        });
+        return p;
+    }
+
+    /**
+     *
      * @returns {Promise<void>}
      */
     async close() {
@@ -114,8 +137,8 @@ class DB {
                 } else {
                     res();
                 }
-            })
-        })
+            });
+        });
     }
 }
 
@@ -127,4 +150,4 @@ async function initDB() {
     await db.run(config.createTableSql);
 }
 
-export { DB, initDB }
+export { DB, initDB };
