@@ -121,154 +121,7 @@ const UTILS = {
 };
 
 const SQL_TABLE_TYPES = {
-    User: {
-        kind: 'object',
-        primaryMember: 'Id',
-        primaryAuto: true,
-        uniqueMember: ['UserName', 'Id'],
-        typename: 'User',
-        member: {
-            Name: {
-                kind: 'unit',
-                typename: 'User.Name',
-                alias: 'String',
-            },
-            UserName: {
-                kind: 'unit',
-                typename: 'User.UserName',
-                alias: 'String',
-            },
-            PassWord: {
-                kind: 'unit',
-                typename: 'User.PassWord',
-                alias: 'String',
-            },
-            Id: {
-                kind: 'unit',
-                typename: 'User.Id',
-                alias: 'Int',
-            },
-        },
-    },
-    Token: {
-        kind: 'object',
-        primaryMember: 'Id',
-        primaryAuto: true,
-        uniqueMember: ['UID', 'Id'],
-        typename: 'Token',
-        member: {
-            UID: {
-                kind: 'unit',
-                typename: 'Token.UID',
-                alias: 'String',
-            },
-            ForUser: {
-                kind: 'unit',
-                typename: 'User',
-            },
-            Id: {
-                kind: 'unit',
-                typename: 'Token.Id',
-                alias: 'Int',
-            },
-        },
-    },
-    Auth: {
-        kind: 'object',
-        primaryMember: 'Id',
-        primaryAuto: true,
-        uniqueMember: ['Permissions', 'Id'],
-        typename: 'Auth',
-        member: {
-            ForUser: {
-                kind: 'unit',
-                typename: 'User',
-            },
-            Permissions: {
-                kind: 'array',
-                type: {
-                    kind: 'unit',
-                    typename: 'Auth.Permissions',
-                    alias: 'String',
-                },
-            },
-            Id: {
-                kind: 'unit',
-                typename: 'Auth.Id',
-                alias: 'Int',
-            },
-        },
-    },
-    Commodity: {
-        kind: 'object',
-        primaryMember: 'Id',
-        primaryAuto: true,
-        uniqueMember: ['Id'],
-        typename: 'Commodity',
-        member: {
-            Owner: {
-                kind: 'unit',
-                typename: 'User',
-            },
-            Name: {
-                kind: 'unit',
-                typename: 'Commodity.Name',
-                alias: 'String',
-            },
-            Description: {
-                kind: 'unit',
-                typename: 'Commodity.Description',
-                alias: 'String',
-            },
-            Price: {
-                kind: 'unit',
-                typename: 'Commodity.Price',
-                alias: 'Int',
-            },
-            Stock: {
-                kind: 'unit',
-                typename: 'Commodity.Stock',
-                alias: 'Int',
-            },
-            Id: {
-                kind: 'unit',
-                typename: 'Commodity.Id',
-                alias: 'Int',
-            },
-        },
-    },
-    Order: {
-        kind: 'object',
-        primaryMember: 'Id',
-        primaryAuto: true,
-        uniqueMember: ['Id'],
-        typename: 'Order',
-        member: {
-            Commodity: {
-                kind: 'unit',
-                typename: 'Commodity',
-            },
-            Count: {
-                kind: 'unit',
-                typename: 'Order.Count',
-                alias: 'Int',
-            },
-            TotPrice: {
-                kind: 'unit',
-                typename: 'Order.TotPrice',
-                alias: 'Int',
-            },
-            Buyer: {
-                kind: 'unit',
-                typename: 'User',
-            },
-            Id: {
-                kind: 'unit',
-                typename: 'Order.Id',
-                alias: 'Int',
-            },
-        },
-    },
+    "City": { "kind": "object", "primaryMember": "Id", "primaryAuto": true, "uniqueMember": ["Id"], "typename": "City", "member": { "Id": { "kind": "unit", "typename": "City.Id", "alias": "Int" } } }, "Person": { "kind": "object", "primaryMember": "Id", "primaryAuto": false, "uniqueMember": ["Id", "Friends"], "typename": "Person", "member": { "Id": { "kind": "unit", "typename": "Person.Id", "alias": "String" }, "Name": { "kind": "unit", "typename": "Person.Name", "alias": "String" }, "Sex": { "kind": "unit", "typename": "Person.Sex", "alias": "String" }, "Age": { "kind": "unit", "typename": "Person.Age", "alias": "Int" }, "City": { "kind": "unit", "typename": "City" }, "Friends": { "kind": "array", "type": { "kind": "unit", "typename": "Person" } } } }
 };
 
 const BASIC_TYPES = {
@@ -293,6 +146,26 @@ const BASIC_TYPES = {
         typename: 'void',
     },
 };
+
+function parseType(str) {
+    if (str.startsWith("[") && str.endsWith(']')) {
+        let type = parseType(str.slice(1, -1));
+        return arrayOfType(type);
+    } else if (Object.keys(BASIC_TYPES).includes(str)) {
+        return BASIC_TYPES[str];
+    } else if (Object.keys(SQL_TABLE_TYPES).includes(str)) {
+        return SQL_TABLE_TYPES[str];
+    } else {
+        let ss = str.split('.');
+        let p = ss[0];
+        let m = ss.slice(1).join('.');
+        let pt = parseType(p);
+        if (Object.keys(pt.member).includes(m)) {
+            return pt.member[m];
+        }
+        TYPE_ERROR();
+    }
+}
 
 function resolveTypeSelfRef(all, basic, cur, update) {
     if (cur.kind === 'unit' && all[cur.typename] !== undefined) {
@@ -408,6 +281,9 @@ function typeEqual(ta, tb) {
         return typeEqual(tl.type, tr.type);
     } else if (tl.kind === 'object') {
         for (const tlm of Object.keys(tl.member)) {
+            if (tl.member[tlm] === tl || tl.member[tlm].type === tl) {
+                continue;
+            }
             if (tr.member[tlm] === undefined) {
                 return false;
             }
@@ -471,10 +347,6 @@ const OPERATORS = {
     SUB: 'sub',
     MUL: 'mul',
     DIV: 'div',
-    SELF_ADD: 'self-add',
-    SELF_SUB: 'self-sub',
-    SELF_MUL: 'self-mul',
-    SELF_DIV: 'self-div',
     COND: 'cond',
     APPEND: 'append',
     SET: 'set',
@@ -814,7 +686,7 @@ const PROXY_HANDLER = {
                 lt: OPERATORS.LT,
                 le: OPERATORS.LE,
                 gt: OPERATORS.GT,
-                GE: OPERATORS.GE,
+                ge: OPERATORS.GE,
             }[p];
             return (val) => {
                 if (
@@ -941,25 +813,27 @@ const PROXY_HANDLER = {
 
             if (p === 'cond') {
                 return (bt, bf) => {
-                    let branchTrue = functionProcess(bt, []);
+                    let branchTrue = functionProcess(bt, [])[RAW_DATA];
                     let branchFalse = null;
                     if (bf) {
-                        branchFalse = functionProcess(bf, []);
+                        branchFalse = functionProcess(bf, [])[RAW_DATA];
+                    } else if (!typeEqual(branchTrue.type, BASIC_TYPES.Void)) {
+                        TYPE_ERROR();
                     }
-                    if (bf !== null && !typeEqual(bt.type, bf.type)) {
+                    if (bf !== null && !typeEqual(branchTrue.type, branchFalse.type)) {
                         TYPE_ERROR();
                     }
                     let e = createMultiChild(
                         OPERATORS.COND,
                         PLATFORMS.HOST,
-                        bt.type,
+                        branchTrue.type,
                         {
                             cond: target,
                             true: branchTrue,
                             false: branchFalse,
                         }
                     );
-                    if (typeEqual(bt.type, BASIC_TYPES.Void)) {
+                    if (typeEqual(branchTrue.type, BASIC_TYPES.Void)) {
                         effectExprs.push(e[RAW_DATA]);
                     } else {
                         return e;
@@ -1345,7 +1219,7 @@ const CODE_GENERATORS = {
                     expr: `"${expr.type.type.typename}"`,
                 };
             } else {
-                assert(ctx.vars.map((v) => v.name).includes(expr.inf.name));
+                // assert(ctx.vars.map((v) => v.name).includes(expr.inf.name));
                 if (expr.inf.nameForSql !== undefined) {
                     return {
                         platform: PLATFORMS.SQL,
@@ -1565,7 +1439,7 @@ const CODE_GENERATORS = {
             return {
                 platform: PLATFORMS.HOST,
                 type: expr.type,
-                expr: `(${ele.expr}).map(${ere.expr})`,
+                expr: `Promise.all((${ele.expr}).map(${ere.expr}))`,
             };
         } else {
             let el = expr.valueObj.left;
@@ -2004,6 +1878,29 @@ const CODE_GENERATORS = {
         }
 
         if (platformRequire === PLATFORMS.SQL) {
+            if (expr.type.type.kind === "object") {
+                let src = expr.value;
+                let myTableName = src.type.typename;
+                let resTableName = expr.type.type.typename;
+                let memberName = expr.inf.memberName;
+                let interTableName = `${myTableName}-${memberName}-${resTableName}`;
+                let myTablePK = src.type.primaryMember;
+                let resTablePK = expr.type.type.primaryMember;
+                let leftF = `L.${myTableName}.${myTablePK}`;
+                let rightF = `R.${resTableName}.${resTablePK}`;
+
+                let sqlE = ((new Proxy(src, PROXY_HANDLER))[myTablePK])[RAW_DATA];
+                let sql = CODE_GENERATORS[sqlE.tag](ctx, sqlE, PLATFORMS.SQL);
+
+                return {
+                    platform: PLATFORMS.SQL,
+                    type: expr.type,
+                    sqlParams: [],
+                    expr: `SELECT "${resTableName}" FROM "${interTableName}", "${resTableName}" WHERE "${resTableName}"."${resTablePK}" == "${interTableName}"."${rightF}" AND "${interTableName}"."${leftF}" == (${sql.expr})`
+                }
+            } else {
+                TODO();
+            }
         } else {
             return null;
         }
@@ -2019,7 +1916,7 @@ const CODE_GENERATORS = {
         if (platformRequire === PLATFORMS.HOST) {
             let target = expr.value;
             let host = CODE_GENERATORS[target.tag](ctx, target, PLATFORMS.HOST);
-            if (host !== null) {
+            if (host === null) {
                 let sql = CODE_GENERATORS[target.tag](
                     ctx,
                     target,
@@ -2916,61 +2813,6 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.SELF_ADD](ctx, expr, platformRequire = PLATFORMS.BOTH) {
-        assert(expr.tag === OPERATORS.SELF_ADD);
-        checkCtx(ctx);
-
-        if (platformRequire === PLATFORMS.BOTH) {
-            platformRequire = PREFER_PLATFORM;
-        }
-
-        if (platformRequire === PLATFORMS.HOST) {
-            return null;
-        }
-        TODO();
-    },
-    [OPERATORS.SELF_DIV](ctx, expr, platformRequire = PLATFORMS.BOTH) {
-        assert(expr.tag === OPERATORS.SELF_DIV);
-        checkCtx(ctx);
-
-        if (platformRequire === PLATFORMS.BOTH) {
-            platformRequire = PREFER_PLATFORM;
-        }
-
-        if (platformRequire === PLATFORMS.HOST) {
-            return null;
-        }
-
-        TODO();
-    },
-    [OPERATORS.SELF_MUL](ctx, expr, platformRequire = PLATFORMS.BOTH) {
-        assert(expr.tag === OPERATORS.SELF_MUL);
-        checkCtx(ctx);
-
-        if (platformRequire === PLATFORMS.BOTH) {
-            platformRequire = PREFER_PLATFORM;
-        }
-
-        if (platformRequire === PLATFORMS.HOST) {
-            return null;
-        }
-
-        TODO();
-    },
-    [OPERATORS.SELF_SUB](ctx, expr, platformRequire = PLATFORMS.BOTH) {
-        assert(expr.tag === OPERATORS.SELF_SUB);
-        checkCtx(ctx);
-
-        if (platformRequire === PLATFORMS.BOTH) {
-            platformRequire = PREFER_PLATFORM;
-        }
-
-        if (platformRequire === PLATFORMS.HOST) {
-            return null;
-        }
-
-        TODO();
-    },
     [OPERATORS.COND](ctx, expr, platformRequire = PLATFORMS.BOTH) {
         assert(expr.tag === OPERATORS.COND);
         checkCtx(ctx);
@@ -2980,7 +2822,7 @@ const CODE_GENERATORS = {
         }
 
         if (platformRequire === PLATFORMS.HOST) {
-            let cond = expr.value.cond;
+            let cond = expr.valueObj.cond;
             let bt = expr.valueObj.true;
             let bf = expr.valueObj.false;
 
@@ -3006,13 +2848,11 @@ const CODE_GENERATORS = {
             return {
                 platform: PLATFORMS.HOST,
                 type: expr.type,
-                expr: `
-                (() => {if (${ce.expr}) {
+                expr: `(async () => {if (${ce.expr}) {
                     return (${bte.expr})();
                 } else { 
                     return (${bfe.expr})(); 
-                }})()
-                `,
+                }})()`,
             };
         } else {
             return null;
@@ -3193,12 +3033,12 @@ const CODE_GENERATORS = {
                 genFns.push(...myctx.dependedFn);
                 fnBodies.push(`return ${g.expr};`);
             }
-            let asyncF = genFns.length === 0 ? '' : 'async ';
+            // let asyncF = genFns.length === 0 ? '' : 'async ';
             ctx.dependedFn.push(...genFns);
             return {
                 platform: PLATFORMS.HOST,
                 expr: func.type,
-                expr: `${asyncF}(${inputNames.join(', ')}) => {
+                expr: `async (${inputNames.join(', ')}) => {
     ${fnBodies.join('\n')}
 }`,
             };
@@ -3252,7 +3092,7 @@ const CODE_GENERATORS = {
             platform: PLATFORMS.HOST,
             type: expr.type,
             expr: `
-                (() => {
+                await (async () => {
                     if (!(${host.expr})) { 
                         throw new Error("${msg}")
                     }
@@ -3272,7 +3112,9 @@ function functionGenerate(fnName, fn, inputs) {
     let f = functionProcess(fn, inputs)[RAW_DATA];
     let ctx = {};
     let r = CODE_GENERATORS[f.tag](ctx, f, PLATFORMS.BOTH);
-    if (r.platform === PLATFORMS.SQL) {
+    if (r === null) {
+        r = CODE_GENERATORS[f.tag](ctx, f, PLATFORMS.HOST);
+    } else if (r.platform === PLATFORMS.SQL) {
         r = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, r);
         return {
             daos: ctx.dependedFn,
@@ -3307,14 +3149,24 @@ function sqlGenerateTest(fn, inputs) {
 
 let f = functionGenerate(
     'test',
-    () => {
-        return User.filter(u => u.Id.eq(1)).map(u => u.Name).filter(u => u.like("%S%"));
+    (pid) => {
+        let p = pid.Person;
+        p.Age.ge(8).assert("年龄未满8岁")
+    
+        let ps = p.City.isNull().not().cond(
+            () => p.Friends.filter(f => f.Age.eq(p.Age)),
+            () => Person.slice(0, 10)
+        )
+        
+        return ps.map(f => f.Name);
     },
-    []
+    [createVar(PLATFORMS.BOTH, parseType("Person.Id"), {
+        name: "pid"
+    })]
 );
 
 console.log("------------==============------------")
 printGeneratedFunction(f);
 console.log("------------==============------------")
 
-sqlGenerateTest(() => User.filter(u => u.Id.eq(1)).map(u => u.Name).filter(u => u.like("%S%")), []);
+// sqlGenerateTest(() => User.filter(u => u.Id.eq(1)).map(u => u.Name).filter(u => u.like("%S%")), []);

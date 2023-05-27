@@ -213,7 +213,7 @@ namespace SQLGen
             }
             else if (type == Type.String && strEnum != null)
             {
-                string check = string.Join(" OR ", strEnum.Select(x => $"\"{name}\" = {x}"));
+                string check = string.Join(" OR ", strEnum.Select(x => $"\"{name}\" = '{x.Replace("\\", "\\\\").Replace("\"", "\\\"")}'"));
                 sb.Append($" CHECK({check})");
             }
             return sb.ToString();
