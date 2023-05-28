@@ -164,11 +164,13 @@ namespace SQLGen
                             {
                                 IsPrimaryKey = true,
                                 isForeignKey = true,
-                                foreignLink = leftPriKey
+                                foreignLink = leftPriKey,
                             });
                             dataTable.AddField(new Field(dataTable, $"Value", field.type)
                             {
                                 IsPrimaryKey = true,
+                                intRange = field.intRange,
+                                strEnum = field.strEnum,
                             });
                         }
                         else if (field.IsNullable)
@@ -177,10 +179,13 @@ namespace SQLGen
                             {
                                 isForeignKey = true,
                                 foreignLink = leftPriKey
+
                             });
                             dataTable.AddField(new Field(dataTable, $"Value", field.type)
                             {
                                 IsNullable = true,
+                                intRange = field.intRange,
+                                strEnum = field.strEnum,
                             });
                         }
                         else
@@ -190,7 +195,10 @@ namespace SQLGen
                                 isForeignKey = true,
                                 foreignLink = leftPriKey
                             });
-                            dataTable.AddField(new Field(dataTable, $"Value", field.type));
+                            dataTable.AddField(new Field(dataTable, $"Value", field.type) {
+                                intRange = field.intRange,
+                                strEnum = field.strEnum,
+                            });
                         }
                     }
                 }

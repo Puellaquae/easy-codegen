@@ -1,3 +1,6 @@
+#![allow(unused_macros)]
+#![allow(unused_mut)]
+
 #[macro_use]
 mod marcos;
 

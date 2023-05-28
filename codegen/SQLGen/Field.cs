@@ -145,7 +145,7 @@ namespace SQLGen
             {
                 if (intRange.start != null && intRange.end != null)
                 {
-                    sb.Append($"CHECK {intRange.start} < {name} AND {name} < {intRange.end}");
+                    sb.Append($"CHECK {intRange.start} <= {name} AND {name} < {intRange.end}");
                 }
                 else if (intRange.start == null && intRange.end != null)
                 {

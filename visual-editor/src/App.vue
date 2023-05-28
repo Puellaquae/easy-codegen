@@ -3,7 +3,8 @@
     <n-config-provider :locale="zhCN">
       <n-message-provider>
         <n-card :hoverable="true" header-style="text-align: center;" title="">
-          <n-h1 style="text-align: center;">可视化编辑工具</n-h1>
+          <n-h1 style="text-align: center;">模板选择配置工具</n-h1>
+          <my-setting />
         </n-card>
       </n-message-provider>
     </n-config-provider>
@@ -12,6 +13,7 @@
 
 <script>
 import { NConfigProvider, NMessageProvider, NCard, NH1 } from "naive-ui"
+import MySetting from "./components/MySetting.vue";
 
 export default {
   name: 'App',
@@ -19,7 +21,8 @@ export default {
     NConfigProvider,
     NMessageProvider,
     NCard,
-    NH1
+    NH1,
+    MySetting
   }
 }
 </script>

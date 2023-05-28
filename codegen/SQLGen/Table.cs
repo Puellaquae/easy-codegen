@@ -89,7 +89,7 @@ namespace SQLGen
             List<Field> newFields = new();
             foreach (var field in fields)
             {
-                if (field.type == Field.Type.UserDef)
+                if (field.type == Field.Type.UserDef && !field.IsArrayOfType)
                 {
                     directLink.Add(field.userDef!);
                     // combine primary key con't generater by user
@@ -140,7 +140,7 @@ namespace SQLGen
 
         public string GenerateSQL()
         {
-            string fieldsSql = string.Join(",\n", fields.Where(f => f.type != Field.Type.UserDef).Select(f => "    " + f.ToSQL()));
+            string fieldsSql = string.Join(",\n", fields.Where(f => f.type != Field.Type.UserDef && !f.IsArrayOfType).Select(f => "    " + f.ToSQL()));
             string priKey;
             if (PrimaryKey.Count == 1)
             {

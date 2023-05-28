@@ -3,7 +3,7 @@ import nanoidDictionary from 'nanoid-dictionary';
 const { nolookalikes } = nanoidDictionary;
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet(nolookalikes, 12);
-import prettier from "prettier"
+import prettier from 'prettier';
 
 const UTILS = {
     uniqueArray(arr) {
@@ -103,7 +103,7 @@ const UTILS = {
             embeddedLanguageFormatting: 'auto',
             semi: true,
             tabWidth: 4,
-            parser: 'babel'
+            parser: 'babel',
         });
     },
     removePrefix(str, pat) {
@@ -117,11 +117,38 @@ const UTILS = {
         const regex = /[^a-zA-Z0-9_]/g;
         // 将匹配到的字符替换为下划线，并返回新字符串
         return str.replace(regex, '_');
-    }
+    },
 };
 
 const SQL_TABLE_TYPES = {
-    "City": { "kind": "object", "primaryMember": "Id", "primaryAuto": true, "uniqueMember": ["Id"], "typename": "City", "member": { "Id": { "kind": "unit", "typename": "City.Id", "alias": "Int" } } }, "Person": { "kind": "object", "primaryMember": "Id", "primaryAuto": false, "uniqueMember": ["Id", "Friends"], "typename": "Person", "member": { "Id": { "kind": "unit", "typename": "Person.Id", "alias": "String" }, "Name": { "kind": "unit", "typename": "Person.Name", "alias": "String" }, "Sex": { "kind": "unit", "typename": "Person.Sex", "alias": "String" }, "Age": { "kind": "unit", "typename": "Person.Age", "alias": "Int" }, "City": { "kind": "unit", "typename": "City" }, "Friends": { "kind": "array", "type": { "kind": "unit", "typename": "Person" } } } }
+    City: {
+        kind: 'object',
+        primaryMember: 'Id',
+        primaryAuto: true,
+        uniqueMember: ['Id'],
+        typename: 'City',
+        member: {
+            Name: { kind: 'unit', typename: 'City.Name', alias: 'String' },
+            Id: { kind: 'unit', typename: 'City.Id', alias: 'Int' },
+        },
+    },
+    Person: {
+        kind: 'object',
+        primaryMember: 'Id',
+        primaryAuto: true,
+        uniqueMember: ['Friends', 'Id'],
+        typename: 'Person',
+        member: {
+            Name: { kind: 'unit', typename: 'Person.Name', alias: 'String' },
+            City: { kind: 'unit', typename: 'City' },
+            Age: { kind: 'unit', typename: 'Person.Age', alias: 'Int' },
+            Friends: {
+                kind: 'array',
+                type: { kind: 'unit', typename: 'Person' },
+            },
+            Id: { kind: 'unit', typename: 'Person.Id', alias: 'Int' },
+        },
+    },
 };
 
 const BASIC_TYPES = {
@@ -148,7 +175,7 @@ const BASIC_TYPES = {
 };
 
 function parseType(str) {
-    if (str.startsWith("[") && str.endsWith(']')) {
+    if (str.startsWith('[') && str.endsWith(']')) {
         let type = parseType(str.slice(1, -1));
         return arrayOfType(type);
     } else if (Object.keys(BASIC_TYPES).includes(str)) {
@@ -382,7 +409,10 @@ const PROXY_HANDLER = {
                     let fnE = functionProcess(fn, [
                         createVar(PLATFORMS.BOTH, target.type.type, {
                             name: `filter_${nanoid()}`,
-                            nameForSql: target.type.type.typename.split('.').slice(1).join('.'),
+                            nameForSql: target.type.type.typename
+                                .split('.')
+                                .slice(1)
+                                .join('.'),
                             kind: 'filter-iter',
                         }),
                     ]);
@@ -404,7 +434,10 @@ const PROXY_HANDLER = {
                     let fnE = functionProcess(fn, [
                         createVar(PLATFORMS.BOTH, target.type.type, {
                             name: `map_${nanoid()}`,
-                            nameForSql: target.type.type.typename.split('.').slice(1).join('.'),
+                            nameForSql: target.type.type.typename
+                                .split('.')
+                                .slice(1)
+                                .join('.'),
                             kind: 'map-iter',
                         }),
                     ]);
@@ -426,7 +459,10 @@ const PROXY_HANDLER = {
                     let fnE = functionProcess(fn, [
                         createVar(PLATFORMS.BOTH, target.type.type, {
                             name: `foreach_${nanoid()}`,
-                            nameForSql: target.type.type.typename.split('.').slice(1).join('.'),
+                            nameForSql: target.type.type.typename
+                                .split('.')
+                                .slice(1)
+                                .join('.'),
                             kind: 'foreach-iter',
                         }),
                     ]);
@@ -820,7 +856,10 @@ const PROXY_HANDLER = {
                     } else if (!typeEqual(branchTrue.type, BASIC_TYPES.Void)) {
                         TYPE_ERROR();
                     }
-                    if (bf !== null && !typeEqual(branchTrue.type, branchFalse.type)) {
+                    if (
+                        bf !== null &&
+                        !typeEqual(branchTrue.type, branchFalse.type)
+                    ) {
                         TYPE_ERROR();
                     }
                     let e = createMultiChild(
@@ -1093,7 +1132,7 @@ function createZeroChild(tag, platform, type, inf = {}) {
     );
 }
 
-function createNewChild(tag, platform, type, inf = {}) { }
+function createNewChild(tag, platform, type, inf = {}) {}
 
 function createVar(platform, type, inf) {
     return createZeroChild(OPERATORS.VAR, platform, type, inf);
@@ -1700,8 +1739,9 @@ const CODE_GENERATORS = {
                     type: expr.type,
                     expr: `SELECT * FROM ${sqlIdentOfType(
                         expr.type
-                    )} WHERE ${sqlIdentOfType(target.type)} == (${trySQL.expr
-                        })`,
+                    )} WHERE ${sqlIdentOfType(target.type)} == (${
+                        trySQL.expr
+                    })`,
                 };
             } else {
                 let host = CODE_GENERATORS[target.tag](
@@ -1878,7 +1918,7 @@ const CODE_GENERATORS = {
         }
 
         if (platformRequire === PLATFORMS.SQL) {
-            if (expr.type.type.kind === "object") {
+            if (expr.type.type.kind === 'object') {
                 let src = expr.value;
                 let myTableName = src.type.typename;
                 let resTableName = expr.type.type.typename;
@@ -1889,15 +1929,15 @@ const CODE_GENERATORS = {
                 let leftF = `L.${myTableName}.${myTablePK}`;
                 let rightF = `R.${resTableName}.${resTablePK}`;
 
-                let sqlE = ((new Proxy(src, PROXY_HANDLER))[myTablePK])[RAW_DATA];
+                let sqlE = new Proxy(src, PROXY_HANDLER)[myTablePK][RAW_DATA];
                 let sql = CODE_GENERATORS[sqlE.tag](ctx, sqlE, PLATFORMS.SQL);
 
                 return {
                     platform: PLATFORMS.SQL,
                     type: expr.type,
                     sqlParams: [],
-                    expr: `SELECT "${resTableName}" FROM "${interTableName}", "${resTableName}" WHERE "${resTableName}"."${resTablePK}" == "${interTableName}"."${rightF}" AND "${interTableName}"."${leftF}" == (${sql.expr})`
-                }
+                    expr: `SELECT "${resTableName}" FROM "${interTableName}", "${resTableName}" WHERE "${resTableName}"."${resTablePK}" == "${interTableName}"."${rightF}" AND "${interTableName}"."${leftF}" == (${sql.expr})`,
+                };
             } else {
                 TODO();
             }
@@ -2002,11 +2042,21 @@ const CODE_GENERATORS = {
             );
 
             if (el === null) {
-                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, el);
+                let elsql = CODE_GENERATORS[expr.valueObj.left.tag](
+                    ctx,
+                    expr.valueObj.left,
+                    PLATFORMS.SQL
+                );
+                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, elsql);
             }
 
             if (er === null) {
-                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, er);
+                let ersql = CODE_GENERATORS[expr.valueObj.right.tag](
+                    ctx,
+                    expr.valueObj.right,
+                    PLATFORMS.SQL
+                );
+                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, ersql);
             }
 
             return {
@@ -2066,11 +2116,21 @@ const CODE_GENERATORS = {
             );
 
             if (el === null) {
-                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, el);
+                let elsql = CODE_GENERATORS[expr.valueObj.left.tag](
+                    ctx,
+                    expr.valueObj.left,
+                    PLATFORMS.SQL
+                );
+                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, elsql);
             }
 
             if (er === null) {
-                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, er);
+                let ersql = CODE_GENERATORS[expr.valueObj.right.tag](
+                    ctx,
+                    expr.valueObj.right,
+                    PLATFORMS.SQL
+                );
+                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, ersql);
             }
 
             return {
@@ -2130,11 +2190,21 @@ const CODE_GENERATORS = {
             );
 
             if (el === null) {
-                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, el);
+                let elsql = CODE_GENERATORS[expr.valueObj.left.tag](
+                    ctx,
+                    expr.valueObj.left,
+                    PLATFORMS.SQL
+                );
+                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, elsql);
             }
 
             if (er === null) {
-                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, er);
+                let ersql = CODE_GENERATORS[expr.valueObj.right.tag](
+                    ctx,
+                    expr.valueObj.right,
+                    PLATFORMS.SQL
+                );
+                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, ersql);
             }
 
             return {
@@ -2194,11 +2264,21 @@ const CODE_GENERATORS = {
             );
 
             if (el === null) {
-                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, el);
+                let elsql = CODE_GENERATORS[expr.valueObj.left.tag](
+                    ctx,
+                    expr.valueObj.left,
+                    PLATFORMS.SQL
+                );
+                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, elsql);
             }
 
             if (er === null) {
-                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, er);
+                let ersql = CODE_GENERATORS[expr.valueObj.right.tag](
+                    ctx,
+                    expr.valueObj.right,
+                    PLATFORMS.SQL
+                );
+                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, ersql);
             }
 
             return {
@@ -2258,11 +2338,21 @@ const CODE_GENERATORS = {
             );
 
             if (el === null) {
-                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, el);
+                let elsql = CODE_GENERATORS[expr.valueObj.left.tag](
+                    ctx,
+                    expr.valueObj.left,
+                    PLATFORMS.SQL
+                );
+                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, elsql);
             }
 
             if (er === null) {
-                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, er);
+                let ersql = CODE_GENERATORS[expr.valueObj.right.tag](
+                    ctx,
+                    expr.valueObj.right,
+                    PLATFORMS.SQL
+                );
+                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, ersql);
             }
 
             return {
@@ -2322,11 +2412,21 @@ const CODE_GENERATORS = {
             );
 
             if (el === null) {
-                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, el);
+                let elsql = CODE_GENERATORS[expr.valueObj.left.tag](
+                    ctx,
+                    expr.valueObj.left,
+                    PLATFORMS.SQL
+                );
+                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, elsql);
             }
 
             if (er === null) {
-                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, er);
+                let ersql = CODE_GENERATORS[expr.valueObj.right.tag](
+                    ctx,
+                    expr.valueObj.right,
+                    PLATFORMS.SQL
+                );
+                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, ersql);
             }
 
             return {
@@ -2386,11 +2486,21 @@ const CODE_GENERATORS = {
             );
 
             if (el === null) {
-                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, el);
+                let elsql = CODE_GENERATORS[expr.valueObj.left.tag](
+                    ctx,
+                    expr.valueObj.left,
+                    PLATFORMS.SQL
+                );
+                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, elsql);
             }
 
             if (er === null) {
-                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, er);
+                let ersql = CODE_GENERATORS[expr.valueObj.right.tag](
+                    ctx,
+                    expr.valueObj.right,
+                    PLATFORMS.SQL
+                );
+                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, ersql);
             }
 
             return {
@@ -2450,11 +2560,21 @@ const CODE_GENERATORS = {
             );
 
             if (el === null) {
-                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, el);
+                let elsql = CODE_GENERATORS[expr.valueObj.left.tag](
+                    ctx,
+                    expr.valueObj.left,
+                    PLATFORMS.SQL
+                );
+                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, elsql);
             }
 
             if (er === null) {
-                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, er);
+                let ersql = CODE_GENERATORS[expr.valueObj.right.tag](
+                    ctx,
+                    expr.valueObj.right,
+                    PLATFORMS.SQL
+                );
+                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, ersql);
             }
 
             return {
@@ -2514,11 +2634,21 @@ const CODE_GENERATORS = {
             );
 
             if (el === null) {
-                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, el);
+                let elsql = CODE_GENERATORS[expr.valueObj.left.tag](
+                    ctx,
+                    expr.valueObj.left,
+                    PLATFORMS.SQL
+                );
+                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, elsql);
             }
 
             if (er === null) {
-                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, er);
+                let ersql = CODE_GENERATORS[expr.valueObj.right.tag](
+                    ctx,
+                    expr.valueObj.right,
+                    PLATFORMS.SQL
+                );
+                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, ersql);
             }
 
             return {
@@ -2578,11 +2708,21 @@ const CODE_GENERATORS = {
             );
 
             if (el === null) {
-                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, el);
+                let elsql = CODE_GENERATORS[expr.valueObj.left.tag](
+                    ctx,
+                    expr.valueObj.left,
+                    PLATFORMS.SQL
+                );
+                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, elsql);
             }
 
             if (er === null) {
-                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, er);
+                let ersql = CODE_GENERATORS[expr.valueObj.right.tag](
+                    ctx,
+                    expr.valueObj.right,
+                    PLATFORMS.SQL
+                );
+                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, ersql);
             }
 
             return {
@@ -2642,11 +2782,21 @@ const CODE_GENERATORS = {
             );
 
             if (el === null) {
-                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, el);
+                let elsql = CODE_GENERATORS[expr.valueObj.left.tag](
+                    ctx,
+                    expr.valueObj.left,
+                    PLATFORMS.SQL
+                );
+                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, elsql);
             }
 
             if (er === null) {
-                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, er);
+                let ersql = CODE_GENERATORS[expr.valueObj.right.tag](
+                    ctx,
+                    expr.valueObj.right,
+                    PLATFORMS.SQL
+                );
+                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, ersql);
             }
 
             return {
@@ -2706,11 +2856,21 @@ const CODE_GENERATORS = {
             );
 
             if (el === null) {
-                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, el);
+                let elsql = CODE_GENERATORS[expr.valueObj.left.tag](
+                    ctx,
+                    expr.valueObj.left,
+                    PLATFORMS.SQL
+                );
+                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, elsql);
             }
 
             if (er === null) {
-                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, er);
+                let ersql = CODE_GENERATORS[expr.valueObj.right.tag](
+                    ctx,
+                    expr.valueObj.right,
+                    PLATFORMS.SQL
+                );
+                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, ersql);
             }
 
             return {
@@ -2770,11 +2930,21 @@ const CODE_GENERATORS = {
             );
 
             if (el === null) {
-                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, el);
+                let elsql = CODE_GENERATORS[expr.valueObj.left.tag](
+                    ctx,
+                    expr.valueObj.left,
+                    PLATFORMS.SQL
+                );
+                el = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, elsql);
             }
 
             if (er === null) {
-                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, er);
+                let ersql = CODE_GENERATORS[expr.valueObj.right.tag](
+                    ctx,
+                    expr.valueObj.right,
+                    PLATFORMS.SQL
+                );
+                er = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, ersql);
             }
 
             return {
@@ -2895,8 +3065,8 @@ const CODE_GENERATORS = {
                 expr: `INSERT INTO ${srcTableName} (${Object.keys(obj)
                     .map((m) => `"${m}"`)
                     .join(', ')}) VALUES (${Object.keys(obj)
-                        .map((m) => `(${obj[m].expr})`)
-                        .join(', ')})`,
+                    .map((m) => `(${obj[m].expr})`)
+                    .join(', ')})`,
             };
         }
 
@@ -2913,8 +3083,6 @@ const CODE_GENERATORS = {
         if (platformRequire === PLATFORMS.HOST) {
             return null;
         }
-
-
     },
     [OPERATORS.REMOVE](ctx, expr, platformRequire = PLATFORMS.BOTH) {
         assert(expr.tag === OPERATORS.REMOVE);
@@ -2943,11 +3111,18 @@ const CODE_GENERATORS = {
         let queryFn = 'query';
         if (sql.type.kind === 'object') {
             queryFn = 'queryOne';
-        } else if (sql.type.kind === 'unit' || (sql.type.kind === 'basic' && !(typeEqual(sql.type, BASIC_TYPES.Void)))) {
+        } else if (
+            sql.type.kind === 'unit' ||
+            (sql.type.kind === 'basic' &&
+                !typeEqual(sql.type, BASIC_TYPES.Void))
+        ) {
             queryFn = 'queryOneElem';
         } else if (typeEqual(sql.type, BASIC_TYPES.Void)) {
             queryFn = 'run';
-        } else if (sql.type.kind === "array" && sql.type.type.kind !== "object") {
+        } else if (
+            sql.type.kind === 'array' &&
+            sql.type.type.kind !== 'object'
+        ) {
             queryFn = 'queryElem';
         }
         let fnName = `${inFnNameOfType(sql.type)}_SQLGet_${nanoid()}`;
@@ -3044,7 +3219,7 @@ const CODE_GENERATORS = {
             };
         } else {
             {
-                if (func.body.expr.length !== 0) {
+                if (func.body.expr.length !== 0 || func.body.ret === null) {
                     return null;
                 }
                 let myctx = {
@@ -3053,6 +3228,7 @@ const CODE_GENERATORS = {
                         expr: i[RAW_DATA].inf.name,
                     })),
                 };
+                
                 let g = CODE_GENERATORS[func.body.ret.tag](
                     myctx,
                     func.body.ret,
@@ -3150,23 +3326,17 @@ function sqlGenerateTest(fn, inputs) {
 let f = functionGenerate(
     'test',
     (pid) => {
-        let p = pid.Person;
-        p.Age.ge(8).assert("年龄未满8岁")
-    
-        let ps = p.City.isNull().not().cond(
-            () => p.Friends.filter(f => f.Age.eq(p.Age)),
-            () => Person.slice(0, 10)
-        )
-        
-        return ps.map(f => f.Name);
+        City.count().eq(1).assert("test");
     },
-    [createVar(PLATFORMS.BOTH, parseType("Person.Id"), {
-        name: "pid"
-    })]
+    [
+        createVar(PLATFORMS.BOTH, parseType('Person.Id'), {
+            name: 'pid',
+        }),
+    ]
 );
 
-console.log("------------==============------------")
+console.log('------------==============------------');
 printGeneratedFunction(f);
-console.log("------------==============------------")
+console.log('------------==============------------');
 
 // sqlGenerateTest(() => User.filter(u => u.Id.eq(1)).map(u => u.Name).filter(u => u.like("%S%")), []);
