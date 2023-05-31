@@ -1,7 +1,8 @@
 import sqlite3 from 'sqlite3';
 import { rm } from 'fs/promises';
 import { existsSync } from 'fs';
-import { config } from '../config/config.js';
+import { config } from './config/config.js';
+import genericPool from 'generic-pool';
 
 class DB {
     /**
@@ -115,10 +116,12 @@ class DB {
                 if (err != null) {
                     rej(err);
                 } else {
-                    res(rows.map(r => {
-                        let key = Object.keys(r)[0];
-                        return r[key];
-                    }));
+                    res(
+                        rows.map((r) => {
+                            let key = Object.keys(r)[0];
+                            return r[key];
+                        })
+                    );
                 }
             });
         });
@@ -150,4 +153,24 @@ async function initDB() {
     await db.run(config.createTableSql);
 }
 
-export { DB, initDB };
+const factory = {
+    create: function () {
+        return new DB(config.dbPath);
+    },
+    /**
+     *
+     * @param {DB} client
+     */
+    destroy: function (client) {
+        client.close();
+    },
+};
+
+const opt = {
+    max: 10,
+    min: 2,
+};
+
+const dbPool = genericPool.createPool(factory, opt);
+
+export { dbPool, DB, initDB };

@@ -2,6 +2,7 @@
 using SExpr;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text;
 
 internal class Program
 {
@@ -18,7 +19,8 @@ internal class Program
     {
         string? basePath = null;
         string? inFile = null;
-        string? outFile = null;
+        string? sqlOutFile = null;
+        string? infOutFile = null;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -30,30 +32,41 @@ internal class Program
             {
                 inFile = args[i + 1];
             }
-            else if (args[i] == "--out" && i + 1 < args.Length)
+            else if (args[i] == "--sqlout" && i + 1 < args.Length)
             {
-                outFile = args[i + 1];
+                sqlOutFile = args[i + 1];
+            }
+            else if (args[i] == "--infout" && i + 1 < args.Length)
+            {
+                infOutFile = args[i + 1];
             }
         }
 
         basePath ??= "../../processing-data/";
         inFile ??= "input.ecg2";
+        sqlOutFile ??= "input.sql";
+        infOutFile ??= "input.ecg3";
 
         string parsedJsonPath = Path.Combine(basePath, inFile);
+        sqlOutFile = Path.Combine(basePath, sqlOutFile);
+        infOutFile = Path.Combine(basePath, infOutFile);
 
         Console.WriteLine($"CodeGen, Input: {Path.GetFullPath(parsedJsonPath)}");
         Console.WriteLine("Load File");
 
-        RawData raw = JsonSerializer.Deserialize<RawData>(File.ReadAllText(parsedJsonPath))!;
-        List<RawTable> rawTable = raw.Entities!;
+        List<RawTable> rawTable = JsonSerializer.Deserialize<List<RawTable>>(File.ReadAllText(parsedJsonPath))!;
 
         Database database = new(rawTable);
 
         Console.WriteLine("Generate SQL Table Create Script");
+        StringBuilder sb = new();
         foreach (Table table in database.tables)
         {
+            sb.Append($"{table.GenerateSQL()}\n");
             Console.Write($"{table.GenerateSQL()}\n");
         }
+
+        File.WriteAllText(sqlOutFile, sb.ToString());
 
         Console.WriteLine("Types:");
         Console.WriteLine(string.Join("\n", database.GetTypes()));
@@ -85,5 +98,6 @@ internal class Program
         }
 
         Console.WriteLine(database.GenJSTypeDef());
+        File.WriteAllText(infOutFile, $"{{{database.GenJSTypeDef()}}}");
     }
 }

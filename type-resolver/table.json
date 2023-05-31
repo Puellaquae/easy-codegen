@@ -1,0 +1,137 @@
+{
+    "Permission": {
+        "kind": "object",
+        "primaryMember": "Id",
+        "primaryAuto": true,
+        "uniqueMember": ["Id"],
+        "typename": "Permission",
+        "member": {
+            "User": {
+                "kind": "unit",
+                "typename": "User"
+            },
+            "Level": {
+                "kind": "unit",
+                "typename": "Permission.Level",
+                "alias": "Int"
+            },
+            "Id": {
+                "kind": "unit",
+                "typename": "Permission.Id",
+                "alias": "Int"
+            }
+        }
+    },
+    "User": {
+        "kind": "object",
+        "primaryMember": "Id",
+        "primaryAuto": true,
+        "uniqueMember": ["UserName", "Id"],
+        "typename": "User",
+        "member": {
+            "UserName": {
+                "kind": "unit",
+                "typename": "User.UserName",
+                "alias": "String"
+            },
+            "PassWord": {
+                "kind": "unit",
+                "typename": "User.PassWord",
+                "alias": "String"
+            },
+            "Id": {
+                "kind": "unit",
+                "typename": "User.Id",
+                "alias": "Int"
+            }
+        }
+    },
+    "Token": {
+        "kind": "object",
+        "primaryMember": "Id",
+        "primaryAuto": true,
+        "uniqueMember": ["Token", "Id"],
+        "typename": "Token",
+        "member": {
+            "ForUser": {
+                "kind": "unit",
+                "typename": "User"
+            },
+            "Token": {
+                "kind": "unit",
+                "typename": "Token.Token",
+                "alias": "String"
+            },
+            "Id": {
+                "kind": "unit",
+                "typename": "Token.Id",
+                "alias": "Int"
+            }
+        }
+    },
+    "Goods": {
+        "kind": "object",
+        "primaryMember": "Id",
+        "primaryAuto": true,
+        "uniqueMember": ["Id"],
+        "typename": "Goods",
+        "member": {
+            "Owner": {
+                "kind": "unit",
+                "typename": "User"
+            },
+            "Name": {
+                "kind": "unit",
+                "typename": "Goods.Name",
+                "alias": "String"
+            },
+            "Price": {
+                "kind": "unit",
+                "typename": "Goods.Price",
+                "alias": "Int"
+            },
+            "Stock": {
+                "kind": "unit",
+                "typename": "Goods.Stock",
+                "alias": "Int"
+            },
+            "Id": {
+                "kind": "unit",
+                "typename": "Goods.Id",
+                "alias": "Int"
+            }
+        }
+    },
+    "Order": {
+        "kind": "object",
+        "primaryMember": "Id",
+        "primaryAuto": true,
+        "uniqueMember": ["Id"],
+        "typename": "Order",
+        "member": {
+            "Buyer": {
+                "kind": "unit",
+                "typename": "User"
+            },
+            "Good": {
+                "kind": "unit",
+                "typename": "Goods"
+            },
+            "Count": {
+                "kind": "unit",
+                "typename": "Order.Count",
+                "alias": "Int"
+            },
+            "TotalPrice": {
+                "kind": "unit",
+                "typename": "Order.TotalPrice",
+                "alias": "Int"
+            },
+            "Id": {
+                "kind": "unit",
+                "typename": "Order.Id",
+                "alias": "Int"
+            }
+        }
+    }
+}

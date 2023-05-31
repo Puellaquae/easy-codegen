@@ -2,8 +2,17 @@ import assert, { ok } from 'assert';
 import nanoidDictionary from 'nanoid-dictionary';
 const { nolookalikes } = nanoidDictionary;
 import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet(nolookalikes, 12);
+const _nanoid = customAlphabet(nolookalikes, 12);
+const nanoid = () => {
+    let t = _nanoid();
+    if (!UTILS.isValidVariableName(t)) {
+        t = `v${t}`;
+    }
+    return t;
+};
 import prettier from 'prettier';
+import { readFileSync } from 'fs';
+import { format as sqlFormat } from 'sql-formatter';
 
 const UTILS = {
     uniqueArray(arr) {
@@ -120,7 +129,7 @@ const UTILS = {
     },
 };
 
-const SQL_TABLE_TYPES = {
+let SQL_TABLE_TYPES = {
     City: {
         kind: 'object',
         primaryMember: 'Id',
@@ -139,7 +148,11 @@ const SQL_TABLE_TYPES = {
         uniqueMember: ['Friends', 'Id'],
         typename: 'Person',
         member: {
-            Name: { kind: 'unit', typename: 'Person.Name', alias: 'String' },
+            Name: {
+                kind: 'unit',
+                typename: 'Person.Name',
+                alias: 'String',
+            },
             City: { kind: 'unit', typename: 'City' },
             Age: { kind: 'unit', typename: 'Person.Age', alias: 'Int' },
             Friends: {
@@ -217,13 +230,16 @@ function resolveTypeSelfRef(all, basic, cur, update) {
     }
 }
 
-for (let type of Object.keys(SQL_TABLE_TYPES)) {
-    resolveTypeSelfRef(
-        SQL_TABLE_TYPES,
-        BASIC_TYPES,
-        SQL_TABLE_TYPES[type],
-        (t) => (SQL_TABLE_TYPES[type] = t)
-    );
+function loadSQLTableInf(jsonInf) {
+    SQL_TABLE_TYPES = JSON.parse(jsonInf);
+    for (let type of Object.keys(SQL_TABLE_TYPES)) {
+        resolveTypeSelfRef(
+            SQL_TABLE_TYPES,
+            BASIC_TYPES,
+            SQL_TABLE_TYPES[type],
+            (t) => (SQL_TABLE_TYPES[type] = t)
+        );
+    }
 }
 
 const UNREACHABLE = (inf = '') => {
@@ -244,7 +260,7 @@ const PLATFORMS = {
     BOTH: 'both',
 };
 
-const PREFER_PLATFORM = PLATFORMS.SQL;
+let PREFER_PLATFORM = PLATFORMS.SQL;
 
 function arrayOfType(type) {
     return {
@@ -356,10 +372,10 @@ const OPERATORS = {
     AVG: 'avg',
     SLICE: 'slice',
     REACCESS: 'reacess',
-    MEMBER_ACCESS: 'member-access',
-    FOREIGN_MEMBER_ACCESS: 'foreign-member-access',
-    ARRAY_MEMBER_ACCESS: 'array-member-access',
-    IS_NULL: 'is-null',
+    MEMBER_ACCESS: 'memberAccess',
+    FOREIGN_MEMBER_ACCESS: 'foreignMemberAccess',
+    ARRAY_MEMBER_ACCESS: 'arrayMemberAccess',
+    IS_NULL: 'isNull',
     NOT: 'not',
     EQ: 'eq',
     NEQ: 'neq',
@@ -382,130 +398,336 @@ const OPERATORS = {
     FUNC: 'func',
     ASSERT: 'assert',
     // Specifial operator
-    SQL_TO_HOST: 'sql-to-host',
+    SQL_TO_HOST: 'sqlToHost',
+    CALL: 'call',
+    PIN: 'pin',
 };
 
 const RAW_DATA = Symbol('de-proxy');
 
 let effectExprs = [];
 
-const PROXY_HANDLER = {
-    get(target, p, receiver) {
-        if (p === RAW_DATA) {
+const PARSER_TABLE = {
+    [RAW_DATA]: {
+        validator: () => true,
+        processor: (target, p, r) => {
             return target;
-        }
-        if (target.type.kind === 'array') {
-            if (p === 'first') {
-                return () => {
-                    return createOneChild(
-                        OPERATORS.FIRST,
+        },
+    },
+    [OPERATORS.PIN]: {
+        validator: () => true,
+        processor: (target, p, r) => {
+            return () => {
+                let varName = nanoid();
+                effectExprs.push(
+                    createOneChild(
+                        OPERATORS.PIN,
+                        PLATFORMS.HOST,
+                        BASIC_TYPES.Void,
+                        target,
+                        {
+                            varName,
+                        }
+                    )[RAW_DATA]
+                );
+                return createVar(PLATFORMS.HOST, target.type, {
+                    name: varName,
+                });
+            };
+        },
+    },
+    [OPERATORS.FIRST]: {
+        validator: (target, p, r) => target.type.kind === 'array',
+        processor: (target, p, r) => {
+            return () => {
+                return createOneChild(
+                    OPERATORS.FIRST,
+                    PLATFORMS.BOTH,
+                    target.type.type,
+                    target
+                );
+            };
+        },
+    },
+    [OPERATORS.FILTER]: {
+        validator: (target, p, r) => target.type.kind === 'array',
+        processor: (target, p, r) => {
+            return (fn) => {
+                let fnE = functionProcess(fn, [
+                    createVar(PLATFORMS.BOTH, target.type.type, {
+                        name: `filter_${nanoid()}`,
+                        nameForSql: target.type.type.typename
+                            .split('.')
+                            .slice(1)
+                            .join('.'),
+                        kind: 'filter-iter',
+                    }),
+                ]);
+                if (typeEqual(fnE[RAW_DATA].type, BASIC_TYPES.Bool)) {
+                    return createMultiChild(
+                        OPERATORS.FILTER,
+                        PLATFORMS.BOTH,
+                        target.type,
+                        {
+                            left: target,
+                            right: fnE[RAW_DATA],
+                        }
+                    );
+                }
+                TYPE_ERROR();
+            };
+        },
+    },
+    [OPERATORS.MAP]: {
+        validator: (target, p, r) => target.type.kind === 'array',
+        processor: (target, p, r) => {
+            return (fn) => {
+                let fnE = functionProcess(fn, [
+                    createVar(PLATFORMS.BOTH, target.type.type, {
+                        name: `map_${nanoid()}`,
+                        nameForSql: target.type.type.typename
+                            .split('.')
+                            .slice(1)
+                            .join('.'),
+                        kind: 'map-iter',
+                    }),
+                ]);
+                if (typeEqual(fnE[RAW_DATA].type, BASIC_TYPES.Void)) {
+                    TYPE_ERROR();
+                }
+                return createMultiChild(
+                    OPERATORS.MAP,
+                    PLATFORMS.BOTH,
+                    arrayOfType(fnE[RAW_DATA].type),
+                    {
+                        left: target,
+                        right: fnE[RAW_DATA],
+                    }
+                );
+            };
+        },
+    },
+    [OPERATORS.FOREACH]: {
+        validator: (target, p, r) => target.type.kind === 'array',
+        processor: (target, p, r) => {
+            return (fn) => {
+                let fnE = functionProcess(fn, [
+                    createVar(PLATFORMS.BOTH, target.type.type, {
+                        name: `foreach_${nanoid()}`,
+                        nameForSql: target.type.type.typename
+                            .split('.')
+                            .slice(1)
+                            .join('.'),
+                        kind: 'foreach-iter',
+                    }),
+                ]);
+                if (!typeEqual(fnE[RAW_DATA].type, BASIC_TYPES.Void)) {
+                    TYPE_ERROR();
+                }
+                return createMultiChild(
+                    OPERATORS.FOREACH,
+                    PLATFORMS.BOTH,
+                    arrayOfType(fnE[RAW_DATA].type),
+                    {
+                        left: target,
+                        right: fnE[RAW_DATA],
+                    }
+                );
+            };
+        },
+    },
+    [OPERATORS.REDUCE]: {
+        validator: (target, p, r) => target.type.kind === 'array',
+        processor: (target, p, r) => {
+            return (fn, init) => {
+                let fnE = functionProcess(fn, [
+                    createVar(PLATFORMS.BOTH, init[RAW_DATA].type, {
+                        name: `reduce_acc_${nanoid()}`,
+                        kind: 'reduce-acc',
+                    }),
+                    createVar(PLATFORMS.BOTH, target.type.type, {
+                        name: `reduce_${nanoid()}`,
+                        kind: 'reduce-iter',
+                    }),
+                ]);
+                if (!typeEqual(fnE[RAW_DATA].type, init[RAW_DATA].type)) {
+                    TYPE_ERROR();
+                }
+                return createMultiChild(
+                    OPERATORS.MAP,
+                    PLATFORMS.BOTH,
+                    fnE[RAW_DATA].type,
+                    {
+                        src: target,
+                        fn: fnE[RAW_DATA],
+                        init: init[RAW_DATA],
+                    }
+                );
+            };
+        },
+    },
+    [OPERATORS.APPEND]: {
+        validator: (target, p, r) => target.type.kind === 'array',
+        processor: (target, p, r) => {
+            return (val) => {
+                val = val[RAW_DATA];
+                if (typeEqual(val.type, target.type.type)) {
+                    let e = createMultiChild(
+                        OPERATORS.APPEND,
+                        PLATFORMS.BOTH,
+                        BASIC_TYPES.Void,
+                        {
+                            left: target,
+                            right: val,
+                        }
+                    );
+                    effectExprs.push(e[RAW_DATA]);
+                    return;
+                }
+                TYPE_ERROR();
+            };
+        },
+    },
+    [OPERATORS.NEW]: {
+        validator: (target, t, p) => target.inf.globalTable,
+        processor: (target, t, p) => {
+            // create new table entity
+            return (obj) => {
+                if (typeof obj === 'object') {
+                    let members = Object.keys(target.type.type.member);
+                    for (const m of members) {
+                        if (
+                            target.type.type.primaryMember.includes(m) &&
+                            target.type.type.primaryAuto
+                        ) {
+                            continue;
+                        }
+                        if (obj[m] === undefined) {
+                            TYPE_ERROR();
+                        }
+                        if (target.type.type.member[m].kind === 'object') {
+                            // this is object, we need get pri id
+                            if (
+                                nativeTypeEqual(
+                                    obj[m],
+                                    target.type.type.member[m]
+                                )
+                            ) {
+                                // actualy unreablable here
+                                TYPE_ERROR();
+                            } else if (
+                                typeEqual(
+                                    obj[m][RAW_DATA].type,
+                                    target.type.type.member[m]
+                                )
+                            ) {
+                                let priK = obj[m][RAW_DATA].type.primaryMember;
+                                obj[`${m}.${priK}`] = obj[m][priK][RAW_DATA];
+                                delete obj[m];
+                            } else {
+                                TYPE_ERROR();
+                            }
+                        } else {
+                            if (
+                                nativeTypeEqual(
+                                    obj[m],
+                                    target.type.type.member[m]
+                                )
+                            ) {
+                                obj[m] = createConst(
+                                    PLATFORMS.BOTH,
+                                    target.type.type.member[m],
+                                    obj[m]
+                                )[RAW_DATA];
+                            } else if (
+                                typeEqual(
+                                    obj[m][RAW_DATA].type,
+                                    target.type.type.member[m]
+                                )
+                            ) {
+                                obj[m] = obj[m][RAW_DATA];
+                            } else {
+                                TYPE_ERROR();
+                            }
+                        }
+                    }
+                    return createMultiChild(
+                        OPERATORS.NEW,
                         PLATFORMS.BOTH,
                         target.type.type,
-                        target
+                        obj
                     );
+                }
+                TYPE_ERROR();
+            };
+        },
+    },
+    [OPERATORS.REMOVE]: {
+        validator: (target, p, r) => {
+            return (
+                (target.type.kind === 'array' && target.inf.globalTable) ||
+                target.type.kind === 'object'
+            );
+        },
+        processor: (target, p, r) => {
+            if (target.type.kind === 'object') {
+                return () => {
+                    let e = createOneChild(
+                        OPERATORS.REMOVE,
+                        PLATFORMS.HOST,
+                        BASIC_TYPES.Void,
+                        target,
+                        {
+                            fromObject: true,
+                        }
+                    );
+                    effectExprs.push(e[RAW_DATA]);
                 };
-            } else if (p === 'filter') {
+            } else {
                 return (fn) => {
                     let fnE = functionProcess(fn, [
                         createVar(PLATFORMS.BOTH, target.type.type, {
-                            name: `filter_${nanoid()}`,
+                            name: `remove_${nanoid()}`,
                             nameForSql: target.type.type.typename
                                 .split('.')
                                 .slice(1)
                                 .join('.'),
-                            kind: 'filter-iter',
+                            kind: 'remove-iter',
                         }),
                     ]);
                     if (typeEqual(fnE[RAW_DATA].type, BASIC_TYPES.Bool)) {
-                        return createMultiChild(
-                            OPERATORS.FILTER,
+                        let e = createMultiChild(
+                            OPERATORS.REMOVE,
                             PLATFORMS.BOTH,
-                            target.type,
+                            BASIC_TYPES.Void,
                             {
                                 left: target,
                                 right: fnE[RAW_DATA],
+                            },
+                            {
+                                fromObject: false,
                             }
                         );
+                        effectExprs.push(e[RAW_DATA]);
+                        return;
                     }
                     TYPE_ERROR();
                 };
-            } else if (p === 'map') {
-                return (fn) => {
-                    let fnE = functionProcess(fn, [
-                        createVar(PLATFORMS.BOTH, target.type.type, {
-                            name: `map_${nanoid()}`,
-                            nameForSql: target.type.type.typename
-                                .split('.')
-                                .slice(1)
-                                .join('.'),
-                            kind: 'map-iter',
-                        }),
-                    ]);
-                    if (typeEqual(fnE[RAW_DATA].type, BASIC_TYPES.Void)) {
-                        TYPE_ERROR();
-                    }
-                    return createMultiChild(
-                        OPERATORS.MAP,
-                        PLATFORMS.BOTH,
-                        arrayOfType(fnE[RAW_DATA].type),
-                        {
-                            left: target,
-                            right: fnE[RAW_DATA],
-                        }
-                    );
-                };
-            } else if (p === 'foreach') {
-                return (fn) => {
-                    let fnE = functionProcess(fn, [
-                        createVar(PLATFORMS.BOTH, target.type.type, {
-                            name: `foreach_${nanoid()}`,
-                            nameForSql: target.type.type.typename
-                                .split('.')
-                                .slice(1)
-                                .join('.'),
-                            kind: 'foreach-iter',
-                        }),
-                    ]);
-                    if (!typeEqual(fnE[RAW_DATA].type, BASIC_TYPES.Void)) {
-                        TYPE_ERROR();
-                    }
-                    return createMultiChild(
-                        OPERATORS.FOREACH,
-                        PLATFORMS.BOTH,
-                        arrayOfType(fnE[RAW_DATA].type),
-                        {
-                            left: target,
-                            right: fnE[RAW_DATA],
-                        }
-                    );
-                };
-            } else if (p === 'reduce') {
-                return (fn, init) => {
-                    let fnE = functionProcess(fn, [
-                        createVar(PLATFORMS.BOTH, init[RAW_DATA].type, {
-                            name: `reduce_acc_${nanoid()}`,
-                            kind: 'reduce-acc',
-                        }),
-                        createVar(PLATFORMS.BOTH, target.type.type, {
-                            name: `reduce_${nanoid()}`,
-                            kind: 'reduce-iter',
-                        }),
-                    ]);
-                    if (!typeEqual(fnE[RAW_DATA].type, init[RAW_DATA].type)) {
-                        TYPE_ERROR();
-                    }
-                    return createMultiChild(
-                        OPERATORS.MAP,
-                        PLATFORMS.BOTH,
-                        fnE[RAW_DATA].type,
-                        {
-                            src: target,
-                            fn: fnE[RAW_DATA],
-                            init: init[RAW_DATA],
-                        }
-                    );
-                };
-            } else if (p === 'sum' || p === 'avg') {
+            }
+        },
+    },
+};
+
+const PROXY_HANDLER = {
+    get(target, p, receiver) {
+        if (
+            PARSER_TABLE[p] !== undefined &&
+            PARSER_TABLE[p].validator(target, p, receiver)
+        ) {
+            return PARSER_TABLE[p].processor(target, p, receiver);
+        }
+        if (target.type.kind === 'array') {
+            if (p === 'sum' || p === 'avg') {
                 if (typeEqual(target.type.type, BASIC_TYPES.Int)) {
                     return () => {
                         return createOneChild(
@@ -564,23 +786,6 @@ const PROXY_HANDLER = {
                             len: lenE[RAW_DATA],
                         }
                     );
-                };
-            } else if (p === 'append') {
-                return (val) => {
-                    if (typeEqual(val[RAW_DATA].type, target.type.type)) {
-                        let e = createMultiChild(
-                            OPERATORS.APPEND,
-                            PLATFORMS.BOTH,
-                            BASIC_TYPES.Void,
-                            {
-                                left: target,
-                                right: val[RAW_DATA],
-                            }
-                        );
-                        effectExprs.push(e[RAW_DATA]);
-                        return;
-                    }
-                    TYPE_ERROR();
                 };
             }
         }
@@ -658,51 +863,6 @@ const PROXY_HANDLER = {
                     );
                 }
             }
-        }
-
-        // create new table entity
-        if (target.inf.globalTable && p === 'new') {
-            return (obj) => {
-                if (typeof obj === 'object') {
-                    let members = Object.keys(target.type.type.member);
-                    for (const m of members) {
-                        if (
-                            target.type.type.primaryMember.includes(m) &&
-                            target.type.type.primaryAuto
-                        ) {
-                            continue;
-                        }
-                        if (obj[m] === undefined) {
-                            TYPE_ERROR();
-                        }
-                        if (
-                            nativeTypeEqual(obj[m], target.type.type.member[m])
-                        ) {
-                            obj[m] = createConst(
-                                PLATFORMS.BOTH,
-                                target.type.type.member[m],
-                                obj[m]
-                            )[RAW_DATA];
-                        } else if (
-                            typeEqual(
-                                obj[m][RAW_DATA].type,
-                                target.type.type.member[m]
-                            )
-                        ) {
-                            obj[m] = obj[m][RAW_DATA];
-                        } else {
-                            TYPE_ERROR();
-                        }
-                    }
-                    return createMultiChild(
-                        OPERATORS.NEW,
-                        PLATFORMS.BOTH,
-                        target.type.type,
-                        obj
-                    );
-                }
-                TYPE_ERROR();
-            };
         }
 
         if (target.type.kind !== 'basic' && p == 'isNull') {
@@ -935,6 +1095,7 @@ const PROXY_HANDLER = {
 
         // effect operator, push expr into effectExprList
         if (typeEqual(target.type, BASIC_TYPES.Int)) {
+            // deprecated
             if (['selfAdd', 'selfSub', 'selfMul', 'selfDiv'].includes(p)) {
                 let op = {
                     selfAdd: OPERATORS.SELF_ADD,
@@ -1002,7 +1163,7 @@ const PROXY_HANDLER = {
             }
         }
 
-        if (p === 'set') {
+        if (p === 'set' && target.type.kind !== 'array') {
             return (val) => {
                 let expr;
                 if (
@@ -1142,12 +1303,22 @@ function createConst(platform, type, value) {
     return createOneChild(OPERATORS.CONST, platform, type, value);
 }
 
-for (const table of Object.keys(SQL_TABLE_TYPES)) {
-    globalThis[table] = createVar(
-        PLATFORMS.SQL,
-        arrayOfType(SQL_TABLE_TYPES[table]),
-        { globalTable: true }
-    );
+function registerSQLTableIntoGlobalThis() {
+    for (const table of Object.keys(SQL_TABLE_TYPES)) {
+        globalThis[table] = createVar(
+            PLATFORMS.SQL,
+            arrayOfType(SQL_TABLE_TYPES[table]),
+            {
+                globalTable: true,
+            }
+        );
+    }
+}
+
+function unregisterSQLTableFromGlobalThis() {
+    for (const table of Object.keys(SQL_TABLE_TYPES)) {
+        delete globalThis[table];
+    }
 }
 
 function functionProcess(fn, inputs) {
@@ -1156,6 +1327,12 @@ function functionProcess(fn, inputs) {
     let ret = fn(...inputs);
     if (ret === undefined) {
         ret = null;
+    } else if (typeof ret === 'number') {
+        ret = createConst(PLATFORMS.HOST, BASIC_TYPES.Int, ret)[RAW_DATA];
+    } else if (typeof ret === 'string') {
+        ret = createConst(PLATFORMS.HOST, BASIC_TYPES.String, ret)[RAW_DATA];
+    } else if (typeof ret === 'bool') {
+        ret = createConst(PLATFORMS.HOST, BASIC_TYPES.Bool, ret)[RAW_DATA];
     } else {
         ret = ret[RAW_DATA];
     }
@@ -1217,7 +1394,7 @@ const fromExpr = (e) => {
 };
 
 const CODE_GENERATORS = {
-    [OPERATORS.VAR](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.VAR]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.VAR);
         checkCtx(ctx);
 
@@ -1276,7 +1453,7 @@ const CODE_GENERATORS = {
             }
         }
     },
-    [OPERATORS.CONST](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.CONST]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.CONST);
         checkCtx(ctx);
 
@@ -1324,7 +1501,7 @@ const CODE_GENERATORS = {
             }
         }
     },
-    [OPERATORS.FIRST](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.FIRST]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.FIRST);
         checkCtx(ctx);
 
@@ -1386,7 +1563,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.FILTER](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.FILTER]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.FILTER);
         checkCtx(ctx);
 
@@ -1442,7 +1619,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.REDUCE](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.REDUCE]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.REDUCE);
         checkCtx(ctx);
 
@@ -1450,7 +1627,7 @@ const CODE_GENERATORS = {
             platformRequire = PREFER_PLATFORM;
         }
     },
-    [OPERATORS.MAP](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.MAP]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.MAP);
         checkCtx(ctx);
 
@@ -1510,7 +1687,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.FOREACH](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.FOREACH]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.FOREACH);
         checkCtx(ctx);
 
@@ -1518,7 +1695,7 @@ const CODE_GENERATORS = {
             platformRequire = PREFER_PLATFORM;
         }
     },
-    [OPERATORS.SUM](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.SUM]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.SUM);
         checkCtx(ctx);
 
@@ -1569,7 +1746,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.COUNT](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.COUNT]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.COUNT);
         checkCtx(ctx);
 
@@ -1610,7 +1787,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.AVG](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.AVG]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.AVG);
         checkCtx(ctx);
 
@@ -1661,7 +1838,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.SLICE](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.SLICE]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.SLICE);
         checkCtx(ctx);
 
@@ -1717,7 +1894,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.REACCESS](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.REACCESS]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.REACCESS);
         checkCtx(ctx);
 
@@ -1775,7 +1952,11 @@ const CODE_GENERATORS = {
             return CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, selfSQL);
         }
     },
-    [OPERATORS.MEMBER_ACCESS](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.MEMBER_ACCESS]: (
+        ctx,
+        expr,
+        platformRequire = PLATFORMS.BOTH
+    ) => {
         assert(expr.tag === OPERATORS.MEMBER_ACCESS);
         checkCtx(ctx);
 
@@ -1860,11 +2041,11 @@ const CODE_GENERATORS = {
             }
         }
     },
-    [OPERATORS.FOREIGN_MEMBER_ACCESS](
+    [OPERATORS.FOREIGN_MEMBER_ACCESS]: (
         ctx,
         expr,
         platformRequire = PLATFORMS.BOTH
-    ) {
+    ) => {
         assert(expr.tag === OPERATORS.FOREIGN_MEMBER_ACCESS);
         checkCtx(ctx);
 
@@ -1905,11 +2086,11 @@ const CODE_GENERATORS = {
             return null;
         }
     },
-    [OPERATORS.ARRAY_MEMBER_ACCESS](
+    [OPERATORS.ARRAY_MEMBER_ACCESS]: (
         ctx,
         expr,
         platformRequire = PLATFORMS.BOTH
-    ) {
+    ) => {
         assert(expr.tag === OPERATORS.ARRAY_MEMBER_ACCESS);
         checkCtx(ctx);
 
@@ -1945,7 +2126,7 @@ const CODE_GENERATORS = {
             return null;
         }
     },
-    [OPERATORS.IS_NULL](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.IS_NULL]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.IS_NULL);
         checkCtx(ctx);
 
@@ -1983,7 +2164,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.NOT](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.NOT]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.NOT);
         checkCtx(ctx);
 
@@ -2021,7 +2202,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.EQ](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.EQ]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.EQ);
         checkCtx(ctx);
 
@@ -2095,7 +2276,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.NEQ](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.NEQ]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.NEQ);
         checkCtx(ctx);
 
@@ -2169,7 +2350,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.LT](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.LT]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.LT);
         checkCtx(ctx);
 
@@ -2243,7 +2424,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.LE](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.LE]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.LE);
         checkCtx(ctx);
 
@@ -2317,7 +2498,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.GT](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.GT]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.GT);
         checkCtx(ctx);
 
@@ -2391,7 +2572,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.GE](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.GE]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.GE);
         checkCtx(ctx);
 
@@ -2465,7 +2646,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.LIKE](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.LIKE]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.LIKE);
         checkCtx(ctx);
 
@@ -2539,7 +2720,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.AND](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.AND]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.AND);
         checkCtx(ctx);
 
@@ -2613,7 +2794,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.OR](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.OR]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.OR);
         checkCtx(ctx);
 
@@ -2687,7 +2868,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.ADD](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.ADD]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.ADD);
         checkCtx(ctx);
 
@@ -2761,7 +2942,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.SUB](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.SUB]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.SUB);
         checkCtx(ctx);
 
@@ -2835,7 +3016,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.MUL](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.MUL]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.MUL);
         checkCtx(ctx);
 
@@ -2909,7 +3090,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.DIV](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.DIV]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.DIV);
         checkCtx(ctx);
 
@@ -2983,7 +3164,7 @@ const CODE_GENERATORS = {
             };
         }
     },
-    [OPERATORS.COND](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.COND]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.COND);
         checkCtx(ctx);
 
@@ -3028,7 +3209,7 @@ const CODE_GENERATORS = {
             return null;
         }
     },
-    [OPERATORS.APPEND](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.APPEND]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.APPEND);
         checkCtx(ctx);
 
@@ -3068,11 +3249,29 @@ const CODE_GENERATORS = {
                     .map((m) => `(${obj[m].expr})`)
                     .join(', ')})`,
             };
+        } else {
+            let srcTableName = src.type.type.typename;
+            let newC = {};
+            let members = Object.keys(src.type.type.member);
+            for (const m of members) {
+                if (
+                    src.type.type.primaryMember.includes(m) &&
+                    src.type.type.primaryAuto
+                ) {
+                    continue;
+                }
+                newC[m] = new Proxy(target, PROXY_HANDLER)[m].pin();
+            }
+            let t = globalThis[srcTableName].new(newC);
+            expr.valueObj.right = t[RAW_DATA];
+            return CODE_GENERATORS[OPERATORS.APPEND](
+                ctx,
+                expr,
+                platformRequire
+            );
         }
-
-        TODO();
     },
-    [OPERATORS.SET](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.SET]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.SET);
         checkCtx(ctx);
 
@@ -3083,8 +3282,43 @@ const CODE_GENERATORS = {
         if (platformRequire === PLATFORMS.HOST) {
             return null;
         }
+
+        let left = expr.valueObj.left;
+        let right = expr.valueObj.right;
+
+        if (left.type.kind === 'object') {
+            TODO();
+        } else if (left.type.kind === 'array') {
+            TODO();
+        } else {
+            let tableName = left.type.typename.split('.')[0];
+            let fieldName = left.type.typename.split('.').slice(1).join('.');
+            let tableType = SQL_TABLE_TYPES[tableName];
+            let tablePriMem = tableType.primaryMember;
+            let valS = CODE_GENERATORS[right.tag](ctx, right, PLATFORMS.SQL);
+            if (valS === null) {
+                return null;
+            }
+            if (left.tag === OPERATORS.MEMBER_ACCESS) {
+                left = left.value;
+            }
+            let lp = new Proxy(left, PROXY_HANDLER)[tablePriMem][RAW_DATA];
+            let lps = CODE_GENERATORS[lp.tag](ctx, lp, PLATFORMS.SQL);
+            if (lps === null) {
+                return null;
+            }
+            return {
+                sqlParams: UTILS.uniqueArray([
+                    ...(valS.sqlParams ?? []),
+                    ...(lps.sqlParams ?? []),
+                ]),
+                platform: PLATFORMS.SQL,
+                type: BASIC_TYPES.Void,
+                expr: `UPDATE "${tableName}" SET "${fieldName}" = (${valS.expr}) WHERE "${tableName}"."${tablePriMem}" == (${lps.expr})`,
+            };
+        }
     },
-    [OPERATORS.REMOVE](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.REMOVE]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.REMOVE);
         checkCtx(ctx);
 
@@ -3095,15 +3329,33 @@ const CODE_GENERATORS = {
         if (platformRequire === PLATFORMS.HOST) {
             return null;
         }
-        TODO();
+
+        if (expr.inf.fromObject) {
+        } else {
+            let el = expr.valueObj.left;
+            let er = expr.valueObj.right;
+
+            let ere = CODE_GENERATORS[er.tag](ctx, er, PLATFORMS.SQL);
+
+            if (ere === null) {
+                return null;
+            }
+            let tblName = el.type.type.typename;
+            return {
+                sqlParams: ere.sqlParams,
+                platform: PLATFORMS.SQL,
+                type: expr.type,
+                expr: `DELETE FROM "${tblName}" WHERE (${ere.expr})`,
+            };
+        }
     },
-    [OPERATORS.NEW](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.NEW]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.NEW);
         checkCtx(ctx);
 
         TODO();
     },
-    [OPERATORS.SQL_TO_HOST](ctx, sql, opt = {}) {
+    [OPERATORS.SQL_TO_HOST]: (ctx, sql, opt = {}) => {
         checkCtx(ctx);
         assert(sql.platform === PLATFORMS.SQL);
 
@@ -3131,10 +3383,23 @@ const CODE_GENERATORS = {
             params = `, {${params}}`;
         }
         fnName = UTILS.replaceInvalidChars(fnName);
+        let formatSqlExpr = sqlFormat(sql.expr, {
+            language: 'sqlite',
+            tabWidth: 4,
+        })
+            .split('\n')
+            .map((v, i) => {
+                if (i !== 0) {
+                    return `                 ${v}`;
+                }
+                return v;
+            })
+            .join('\n');
         ctx.dependedFn.push({
             fnBody: `const ${fnName} = async (${sql.sqlParams.join(', ')}) => {
-    let db = await dbPool.acquire();
-    return db.${queryFn}(\`${sql.expr}\`${params});
+    const db = await dbPool.acquire();
+    const sql = \`${formatSqlExpr}\`;
+    return db.${queryFn}(sql${params});
 }`,
             daoKind: daoKindOfType(sql.type),
         });
@@ -3144,7 +3409,7 @@ const CODE_GENERATORS = {
             expr: `await ${fnName}(${sql.sqlParams.join(', ')})`,
         };
     },
-    [OPERATORS.FUNC](ctx, func, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.FUNC]: (ctx, func, platformRequire = PLATFORMS.BOTH) => {
         assert(func.tag === OPERATORS.FUNC);
         checkCtx(ctx);
 
@@ -3156,57 +3421,47 @@ const CODE_GENERATORS = {
             let genFns = [];
             let fnBodies = [];
             let inputNames = func.body.inputs.map((i) => i[RAW_DATA].inf.name);
-            for (const expr of func.body.expr) {
+
+            const processExpr = (expr) => {
                 let myctx = {
                     vars: func.body.inputs.map((i) => ({
                         name: i[RAW_DATA].inf.name,
                         expr: i[RAW_DATA].inf.name,
                     })),
                 };
+                let oldEffectExprs = effectExprs;
+                effectExprs = [];
                 let g = CODE_GENERATORS[expr.tag](myctx, expr, PLATFORMS.HOST);
+                let newEE = effectExprs;
+                effectExprs = oldEffectExprs;
                 if (g === null) {
+                    let oldEffectExprs = effectExprs;
+                    effectExprs = [];
                     let gsql = CODE_GENERATORS[expr.tag](
                         myctx,
                         expr,
                         PLATFORMS.SQL
                     );
                     g = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](myctx, gsql);
+                    newEE = effectExprs;
+                    effectExprs = oldEffectExprs;
                 }
+
                 for (const v of myctx.vars) {
                     if (!inputNames.includes(v.name)) {
                         fnBodies.push(`let ${v.name} = ${v.expr};`);
                     }
                 }
+                newEE.forEach((e) => processExpr(e));
                 genFns.push(...myctx.dependedFn);
                 fnBodies.push(`${g.expr};`);
+            };
+
+            for (const expr of func.body.expr) {
+                processExpr(expr);
             }
             if (func.body.ret !== null) {
-                let myctx = {
-                    vars: func.body.inputs.map((i) => ({
-                        name: i[RAW_DATA].inf.name,
-                        expr: i[RAW_DATA].inf.name,
-                    })),
-                };
-                let g = CODE_GENERATORS[func.body.ret.tag](
-                    myctx,
-                    func.body.ret,
-                    PLATFORMS.HOST
-                );
-                if (g === null) {
-                    let gsql = CODE_GENERATORS[func.body.ret.tag](
-                        myctx,
-                        func.body.ret,
-                        PLATFORMS.SQL
-                    );
-                    g = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](myctx, gsql);
-                }
-                for (const v of myctx.vars) {
-                    if (!inputNames.includes(v.name)) {
-                        fnBodies.push(`let ${v.name} = ${v.expr};`);
-                    }
-                }
-                genFns.push(...myctx.dependedFn);
-                fnBodies.push(`return ${g.expr};`);
+                processExpr(func.body.ret);
             }
             // let asyncF = genFns.length === 0 ? '' : 'async ';
             ctx.dependedFn.push(...genFns);
@@ -3228,7 +3483,7 @@ const CODE_GENERATORS = {
                         expr: i[RAW_DATA].inf.name,
                     })),
                 };
-                
+
                 let g = CODE_GENERATORS[func.body.ret.tag](
                     myctx,
                     func.body.ret,
@@ -3243,7 +3498,7 @@ const CODE_GENERATORS = {
             }
         }
     },
-    [OPERATORS.ASSERT](ctx, expr, platformRequire = PLATFORMS.BOTH) {
+    [OPERATORS.ASSERT]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
         assert(expr.tag === OPERATORS.ASSERT);
         checkCtx(ctx);
 
@@ -3274,6 +3529,64 @@ const CODE_GENERATORS = {
                     }
                 })()
             `,
+        };
+    },
+    [OPERATORS.CALL]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
+        assert(expr.tag === OPERATORS.CALL);
+        checkCtx(ctx);
+
+        if (platformRequire === PLATFORMS.BOTH) {
+            platformRequire = PREFER_PLATFORM;
+        }
+
+        if (platformRequire === PLATFORMS.SQL) {
+            return null;
+        }
+
+        let args = expr.valueObj.args;
+        let fnName = expr.valueObj.fnName;
+
+        let argsE = [];
+        for (const arg of args) {
+            let e = CODE_GENERATORS[arg.tag](ctx, arg, PLATFORMS.HOST);
+            if (e === null) {
+                let s = CODE_GENERATORS[arg.tag](ctx, arg, PLATFORMS.SQL);
+                e = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, s);
+            }
+            argsE.push(e);
+        }
+
+        return {
+            platform: PLATFORMS.HOST,
+            type: expr.type,
+            expr: `${fnName}(${argsE.map((a) => `(${a.expr})`).join(',')})`,
+        };
+    },
+    [OPERATORS.PIN]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
+        assert(expr.tag === OPERATORS.PIN);
+        checkCtx(ctx);
+
+        if (platformRequire === PLATFORMS.BOTH) {
+            platformRequire = PREFER_PLATFORM;
+        }
+
+        if (platformRequire === PLATFORMS.SQL) {
+            return null;
+        }
+
+        let varName = expr.inf.varName;
+        let target = expr.value;
+
+        let h = CODE_GENERATORS[target.tag](ctx, target, PLATFORMS.HOST);
+        if (h === null) {
+            let s = CODE_GENERATORS[target.tag](ctx, target, PLATFORMS.SQL);
+            h = CODE_GENERATORS[OPERATORS.SQL_TO_HOST](ctx, s);
+        }
+
+        return {
+            platform: PLATFORMS.HOST,
+            type: expr.type,
+            expr: `let ${varName} = (${h.expr})`,
         };
     },
 };
@@ -3323,20 +3636,163 @@ function sqlGenerateTest(fn, inputs) {
     console.dir(g);
 }
 
-let f = functionGenerate(
-    'test',
-    (pid) => {
-        City.count().eq(1).assert("test");
-    },
-    [
-        createVar(PLATFORMS.BOTH, parseType('Person.Id'), {
-            name: 'pid',
-        }),
-    ]
-);
+function fncallHelperGen(fn) {
+    let exceptArgsLen = fn.args.length;
+    let retType = parseType(fn.type);
+    return (...args) => {
+        assert(args.length === exceptArgsLen);
 
-console.log('------------==============------------');
-printGeneratedFunction(f);
-console.log('------------==============------------');
+        for (let i = 0; i < exceptArgsLen; i++) {
+            assert(
+                typeEqual(args[i][RAW_DATA].type, parseType(fn.args[i].type))
+            );
+        }
 
-// sqlGenerateTest(() => User.filter(u => u.Id.eq(1)).map(u => u.Name).filter(u => u.like("%S%")), []);
+        return createMultiChild(OPERATORS.CALL, PLATFORMS.BOTH, retType, {
+            args,
+            fnName: fn.name,
+        });
+    };
+}
+
+function registerFuncSignIntoGlobalThis(fns) {
+    for (const fn of fns) {
+        globalThis[fn.name] = fncallHelperGen(fn);
+    }
+}
+
+function unregisterFuncSignFromGlobalThis(fns) {
+    for (const fn of fns) {
+        delete globalThis[fn.name];
+    }
+}
+
+function codeGen(lcode) {
+    loadSQLTableInf(readFileSync('./table.json').toString());
+    registerSQLTableIntoGlobalThis();
+    const fns = JSON.parse(lcode);
+    registerFuncSignIntoGlobalThis(fns);
+
+    for (const fn of fns) {
+        if (fn.signOnly) {
+            continue;
+        }
+        let f = functionGenerate(
+            fn.name,
+            new Function(...fn.args.map((a) => a.name), fn.body),
+            fn.args.map((a) => {
+                return createVar(PLATFORMS.HOST, parseType(a.type), {
+                    name: a.name,
+                });
+            })
+        );
+        printGeneratedFunction(f);
+    }
+
+    unregisterFuncSignFromGlobalThis(fns);
+    unregisterSQLTableFromGlobalThis();
+}
+
+function integrateTest(infileData) {
+    let line = infileData
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l != '');
+
+    let entities = [];
+    let apis = [];
+    let route = [];
+
+    let inEntity = false;
+    let inApi = false;
+    let inRoute = false;
+
+    let tmpGroup = [];
+    let breaket = 0;
+
+    for (const l of line) {
+        tmpGroup.push(l);
+        if (l.startsWith('entity')) {
+            inEntity = true;
+        } else if (l.startsWith('fn')) {
+            if (!l.endsWith('{')) {
+                apis.push(tmpGroup);
+                tmpGroup = [];
+            } else {
+                inApi = true;
+            }
+        } else if (l.startsWith('route')) {
+            inRoute = true;
+        } else if (l == '}' && breaket == 0) {
+            if (inEntity) {
+                entities.push(tmpGroup);
+                tmpGroup = [];
+            } else if (inApi) {
+                apis.push(tmpGroup);
+                tmpGroup = [];
+            } else if (inRoute) {
+                route = tmpGroup;
+                tmpGroup = [];
+            }
+            inEntity = false;
+            inApi = false;
+            inRoute = false;
+        } else if (l == '{') {
+            breaket++;
+        } else if (l == '}') {
+            breaket--;
+        }
+    }
+
+    let fns = apis.map((fn) => {
+        let fnSign = fn[0];
+        let [l, mr] = fnSign.split('(');
+        let [_1, fname] = l.split('fn');
+        fname = fname.trim();
+        let [m, r] = mr.split(')');
+        let [_2, rtt] = r.split('->');
+        if (rtt) {
+            rtt = rtt.trim();
+            let [t, _3] = rtt.split('{');
+            rtt = t.trim();
+        } else {
+            rtt = 'Void';
+        }
+        let args = m
+            .trim()
+            .split(',')
+            .filter((s) => s !== '')
+            .map((a) => a.split(':').map((n) => n.trim()))
+            .map((a) => ({
+                name: a[0],
+                type: a[1],
+            }));
+
+        if (fn.length === 1) {
+            // sign only
+            return {
+                signOnly: true,
+                name: fname,
+                args,
+                type: rtt,
+            };
+        } else {
+            return {
+                signOnly: false,
+                name: fname,
+                args,
+                type: rtt,
+                body: fn.slice(1, -1).join('\n'),
+            };
+        }
+    });
+
+    codeGen(JSON.stringify(fns));
+}
+
+PREFER_PLATFORM = PLATFORMS.HOST;
+
+integrateTest(`
+fn removeOrder(oid: Order.Id) {
+    Order.remove(o => o.Id.eq(oid))
+}`);

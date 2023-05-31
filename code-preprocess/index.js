@@ -7,8 +7,12 @@ const argv = minimist(process.argv.slice(2));
 const basePath = argv["base"] ?? "../processing-data";
 const inFileName = argv["i"] ?? "input.ecg";
 const inFile = join(basePath, inFileName);
-const outFileName = argv["o"] ?? "processed.ecg1";
-const outFile = join(basePath, outFileName);
+const doutFileName = argv["od"] ?? "processed.ecgd1";
+const doutFile = join(basePath, doutFileName);
+const loutFileName = argv["ol"] ?? "processed.ecgl1";
+const loutFile = join(basePath, loutFileName);
+const routFileName = argv["or"] ?? "processed.ecgr1";
+const routFile = join(basePath, routFileName);
 
 console.log(`PreProcessing, input: ${resolve(inFile)}`);
 
@@ -65,6 +69,9 @@ for (const entity of entities) {
     let ei = 1;
     entity[0] = "table!(" + entity[0];
     for (; ei < entity.length - 1; ei++) {
+        if (entity[ei].endsWith(',')) {
+            entity[ei].slice(0, -1);
+        }
         let [name, type] = entity[ei].split(":");
         name = name.trim();
         type = type.trim();
@@ -76,30 +83,48 @@ for (const entity of entities) {
     entity[entity.length - 1] += ")";
 }
 
-for (const fn of apis) {
-    let ei = 1;
-    let [l, mr] = fn[0].split("(");
+let fns = apis.map((fn) => {
+    let fnSign = fn[0];
+    let [l, mr] = fnSign.split("(");
+    let [_1, fname] = l.split("fn");
+    fname = fname.trim();
     let [m, r] = mr.split(")");
-    let args = m.split(",").map(a => {
-        let [n, t] = a.split(":");
-        if (t === undefined) {
-            return `"${n}"`
-        } else {
-            return `${n} : "${t}"`
-        }
-    }).join(",");
-
-    fn[0] = `func!(${l}(${args})${r}`;
-    for (; ei < fn.length - 1; ei++) {
-        fn[ei] = `"${fn[ei]}",`
+    let [_2, rtt] = r.split("->");
+    if (rtt) {
+        rtt = rtt.trim();
+        let [t, _3] = rtt.split("{");
+        rtt = t.trim();
+    } else {
+        rtt = "Void";
     }
-    fn[fn.length - 1] += ")";
-}
+    let args = m.trim().split(",").filter(s => s !== "").map(a => a.split(":").map(n => n.trim())).map(a => ({
+        name: a[0],
+        type: a[1]
+    }));
+
+
+
+    if (fn.length === 1) {
+        // sign only
+        return {
+            signOnly: true,
+            name: fname,
+            args,
+            type: rtt
+        };
+    } else {
+        return {
+            signOnly: false,
+            name: fname,
+            args,
+            type: rtt,
+            body: fn.slice(1, -1).join("\n")
+        }
+    }
+});
 
 let entitiesBuilder = entities.map(e => e.join("\n")).join(",\n");
 entitiesBuilder = `vec![${entitiesBuilder}]`;
-let fnsBuilder = apis.map(e => e.join("\n")).join(",\n");
-fnsBuilder = `vec!(${fnsBuilder})`;
 
 let newRoot = [];
 let root = [""];
@@ -116,6 +141,9 @@ for (let i = 1; i < route.length - 1; i++) {
 
 let routeBuilder = `route!{${newRoot.join("\n")}}`;
 
-writeFileSync(outFile, `(${entitiesBuilder}, ${fnsBuilder}, ${routeBuilder})`);
+writeFileSync(doutFile, entitiesBuilder);
+writeFileSync(loutFile, JSON.stringify(fns));
 
-console.log(`PreProcessing, output: ${resolve(outFile)}`);
+console.log(`PreProcessing, output-D: ${resolve(doutFile)}`);
+console.log(`PreProcessing, output-L: ${resolve(loutFile)}`);
+console.log(`PreProcessing, output-R: ${resolve(routFile)}`);

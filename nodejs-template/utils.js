@@ -25,6 +25,4 @@ function sum(arr) {
     return arr.reduce((p, c, _i, _a) => p + c);
 }
 
-export {
-    like, sum
-}
+export { like, sum };

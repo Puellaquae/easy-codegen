@@ -25,10 +25,10 @@ fn main() {
     .unwrap();
 
     println!("Parsing, input: {}", inpath.display());
-    let (ens, fns, route) = include!(include_str!("../config/in.txt"));
+    let ens = include!(include_str!("../config/in.txt"));
     write(
         include_str!("../config/out.txt"),
-        format!("{:#}", Ecg { entities: ens, fns, route }.to_json()),
+        format!("{:#}", ens.to_json()),
     )
     .unwrap();
 

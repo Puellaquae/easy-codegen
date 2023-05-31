@@ -1,0 +1,176 @@
+[
+    {
+        "signOnly": false,
+        "name": "permissionCheck",
+        "args": [
+            {
+                "name": "uid",
+                "type": "User.Id"
+            },
+            {
+                "name": "requireLevel",
+                "type": "Int"
+            }
+        ],
+        "type": "Bool",
+        "body": "return Permission.filter(u => u.User.Id.eq(uid)).first().Level.ge(requireLevel)"
+    },
+    {
+        "signOnly": false,
+        "name": "setPermissLevel",
+        "args": [
+            {
+                "name": "uid",
+                "type": "User.Id"
+            },
+            {
+                "name": "level",
+                "type": "Int"
+            }
+        ],
+        "type": "Void",
+        "body": "let p = Permission.filter(p => p.User.Id.eq(User.Id))\nlet cnt = p.count()\ncnt.eq(0).cond(() => {\nPermission.append(Permission.new({\nUser: uid.User,\nLevel: level\n}))\n}, () => {\np.first().Level.set(level)\n})"
+    },
+    {
+        "signOnly": false,
+        "name": "signup",
+        "args": [
+            {
+                "name": "u",
+                "type": "User"
+            }
+        ],
+        "type": "Void",
+        "body": "User.append(u)"
+    },
+    {
+        "signOnly": false,
+        "name": "signdown",
+        "args": [
+            {
+                "name": "uid",
+                "type": "User.Id"
+            }
+        ],
+        "type": "Void",
+        "body": "User.remove(u => u.Id.eq(uid))"
+    },
+    {
+        "signOnly": true,
+        "name": "uuid",
+        "args": [],
+        "type": "String"
+    },
+    {
+        "signOnly": false,
+        "name": "login",
+        "args": [
+            {
+                "name": "name",
+                "type": "User.UserName"
+            },
+            {
+                "name": "pw",
+                "type": "User.PassWord"
+            }
+        ],
+        "type": "Token.Token",
+        "body": "name.User.PassWord.eq(pw).assert(\"用户名或密码不正确\")\nlet newTok = uuid()\nToken.append(Token.new({\nForUser: name.User,\nToken: newTok\n}))\nreturn newTok"
+    },
+    {
+        "signOnly": false,
+        "name": "logout",
+        "args": [
+            {
+                "name": "tok",
+                "type": "Token.Token"
+            }
+        ],
+        "type": "Void",
+        "body": "Token.remove(t => t.Token.eq(tok))"
+    },
+    {
+        "signOnly": false,
+        "name": "tokenToUser",
+        "args": [
+            {
+                "name": "tok",
+                "type": "Token.Token"
+            }
+        ],
+        "type": "User",
+        "body": "return tok.Token.ForUser"
+    },
+    {
+        "signOnly": false,
+        "name": "newGoods",
+        "args": [
+            {
+                "name": "g",
+                "type": "Goods"
+            }
+        ],
+        "type": "Void",
+        "body": "Goods.append(g)"
+    },
+    {
+        "signOnly": false,
+        "name": "removeGoods",
+        "args": [
+            {
+                "name": "gid",
+                "type": "Goods.Id"
+            }
+        ],
+        "type": "Void",
+        "body": "Goods.remove(g => g.Id.eq(gid))"
+    },
+    {
+        "signOnly": false,
+        "name": "updateGoods",
+        "args": [
+            {
+                "name": "gid",
+                "type": "Goods.Id"
+            },
+            {
+                "name": "g",
+                "type": "Goods"
+            }
+        ],
+        "type": "Void",
+        "body": "gid.Goods.set(g)"
+    },
+    {
+        "signOnly": false,
+        "name": "newOrder",
+        "args": [
+            {
+                "name": "buyerId",
+                "type": "User.Id"
+            },
+            {
+                "name": "gid",
+                "type": "Goods"
+            },
+            {
+                "name": "count",
+                "type": "Int"
+            }
+        ],
+        "type": "Void",
+        "body": "Order.append(Order.new({\nBuyer: buyerId.User,\nGood: gid.Goods,\nCount: count,\nPrice: gid.Goods.Price.mul(count)\n}))"
+    },
+    {
+        "signOnly": false,
+        "name": "removeOrder",
+        "args": [
+            {
+                "name": "oid",
+                "type": "Order.Id"
+            }
+        ],
+        "type": "Void",
+        "body": "Order.remove(o => o.Id.eq(oid))"
+    }
+]
