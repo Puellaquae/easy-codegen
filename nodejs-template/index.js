@@ -3,63 +3,92 @@ import koaRouter from 'koa-router';
 import { dbPool } from './db.js';
 import * as utils from './utils.js';
 
+import nanoidDictionary from 'nanoid-dictionary';
+const { nolookalikes } = nanoidDictionary;
+import { customAlphabet } from 'nanoid';
+const uuid = customAlphabet(nolookalikes, 12);
+
 let app = new koa();
 let router = new koaRouter();
 
-const void_SQLGet_KyJ7LY9PXfHX = async (uid, level) => {
+const User_SQLGet_PmrGjDg3mLEF = async (name) => {
+    const db = await dbPool.acquire();
+    const sql = `SELECT
+                     *
+                 FROM
+                     "User"
+                 WHERE
+                     "User"."UserName" == ($name)`;
+    return db.queryOne(sql, { $name: name });
+};
+
+const void_SQLGet_XKTzz3dYqcQX = async (EjaM4WdgnEPC, name) => {
     const db = await dbPool.acquire();
     const sql = `INSERT INTO
-                     Permission ("User", "Level")
+                     Token ("Token", "ForUser.Id")
                  VALUES
                      (
+                         ($EjaM4WdgnEPC),
                          (
                              SELECT
-                                 *
+                                 "Id"
                              FROM
                                  "User"
                              WHERE
-                                 "User"."Id" == ($uid)
-                         ),
-                         ($level)
+                                 "User"."UserName" == ($name)
+                         )
                      )`;
-    return db.run(sql, { $uid: uid, $level: level });
+    return db.run(sql, { $EjaM4WdgnEPC: EjaM4WdgnEPC, $name: name });
 };
 
-const void_SQLGet_cMp3XWCnzpDY = async (level, uid) => {
-    const db = await dbPool.acquire();
-    const sql = `UPDATE "Permission"
-                 SET
-                     "Level" = ($level)
-                 WHERE
-                     "Permission"."Id" == (
-                         SELECT
-                             "Id"
-                         FROM
-                             "Permission"
-                         WHERE
-                             (("Permission"."User.Id") == ($uid))
-                         LIMIT
-                             1
-                     )`;
-    return db.run(sql, { $level: level, $uid: uid });
-};
-
-const setPermissLevel = async (uid, level) => {
-    (async () => {
-        if (
-            (await PermissionArray_SQLGetTable_NBTWRKt6whk4()).filter(
-                async (filter_qgG98bf7fFt7) => {
-                    filter_qgG98bf7fFt7["User.Id"] === uid;
-                }
-            ).length === 0
-        ) {
-            return (async () => {
-                await void_SQLGet_KyJ7LY9PXfHX(uid, level);
-            })();
-        } else {
-            return (async () => {
-                await void_SQLGet_cMp3XWCnzpDY(level, uid);
-            })();
+const login = async (name, pw) => {
+    await (async () => {
+        if (!((await User_SQLGet_PmrGjDg3mLEF(name)).PassWord === pw)) {
+            throw new Error("用户名或密码不正确");
         }
     })();
+    let EjaM4WdgnEPC = uuid();
+    await void_SQLGet_XKTzz3dYqcQX(EjaM4WdgnEPC, name);
+    return EjaM4WdgnEPC;
 };
+
+const void_SQLGet_YRmdqqLa7APn = async (tok) => {
+    const db = await dbPool.acquire();
+    const sql = `DELETE FROM "Token"
+                 WHERE
+                     (("Token"."Token") == ($tok))`;
+    return db.run(sql, { $tok: tok });
+};
+
+const logout = async (tok) => {
+    await void_SQLGet_YRmdqqLa7APn(tok);
+};
+
+const User_SQLGet_NhwaUjxp8pr8 = async () => {
+    const db = await dbPool.acquire();
+    const sql = `SELECT
+                     *
+                 FROM
+                     "User"
+                 WHERE
+                     "User"."Id" == (
+                         SELECT
+                             "ForUser.Id"
+                         FROM
+                             "Token"
+                         WHERE
+                             "Token"."Token" == ($tok)
+                     )`;
+    return db.queryOne(sql);
+};
+
+const tokenToUser = async (tok) => {
+    return await User_SQLGet_NhwaUjxp8pr8();
+};
+
+let tok = await login('12345678');
+console.log(tok);
+console.log(tokenToUser(tok));
+console.log(logout(tok));
+console.log(tokenToUser(tok));
+

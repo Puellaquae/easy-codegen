@@ -3422,7 +3422,7 @@ const CODE_GENERATORS = {
             let fnBodies = [];
             let inputNames = func.body.inputs.map((i) => i[RAW_DATA].inf.name);
 
-            const processExpr = (expr) => {
+            const processExpr = (expr, ret = false) => {
                 let myctx = {
                     vars: func.body.inputs.map((i) => ({
                         name: i[RAW_DATA].inf.name,
@@ -3454,14 +3454,14 @@ const CODE_GENERATORS = {
                 }
                 newEE.forEach((e) => processExpr(e));
                 genFns.push(...myctx.dependedFn);
-                fnBodies.push(`${g.expr};`);
+                fnBodies.push(`${ret ? 'return ' : ''}${g.expr};`);
             };
 
             for (const expr of func.body.expr) {
                 processExpr(expr);
             }
             if (func.body.ret !== null) {
-                processExpr(func.body.ret);
+                processExpr(func.body.ret, true);
             }
             // let asyncF = genFns.length === 0 ? '' : 'async ';
             ctx.dependedFn.push(...genFns);
@@ -3793,6 +3793,24 @@ function integrateTest(infileData) {
 PREFER_PLATFORM = PLATFORMS.HOST;
 
 integrateTest(`
-fn removeOrder(oid: Order.Id) {
-    Order.remove(o => o.Id.eq(oid))
-}`);
+fn uuid() -> String
+
+fn login(name: User.UserName, pw: User.PassWord) -> Token.Token {
+    name.User.PassWord.eq(pw).assert("用户名或密码不正确")
+
+    let newTok = uuid().pin()
+    Token.append(Token.new({
+        ForUser: name.User,
+        Token: newTok
+    }))
+    return newTok
+}
+
+fn logout(tok: Token.Token) {
+    Token.remove(t => t.Token.eq(tok))
+}
+
+fn tokenToUser(tok: Token.Token) -> User {
+    return tok.Token.ForUser
+}
+`);
