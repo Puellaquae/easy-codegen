@@ -11,6 +11,7 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
+        "minimist": "^1.2.8",
         "nanoid": "^4.0.2",
         "nanoid-dictionary": "^4.3.0",
         "sql-formatter": "^12.2.1"

@@ -11,8 +11,16 @@ const nanoid = () => {
     return t;
 };
 import prettier from 'prettier';
-import { readFileSync } from 'fs';
-import { format as sqlFormat } from 'sql-formatter';
+import { readFileSync, writeFileSync } from 'fs';
+import { format as _sqlFormat } from 'sql-formatter';
+import minimist from "minimist";
+
+const sqlFormat = (expr) => {
+    return _sqlFormat(expr, {
+        language: 'sqlite',
+        tabWidth: 4,
+    })
+}
 
 const UTILS = {
     uniqueArray(arr) {
@@ -602,7 +610,7 @@ const PARSER_TABLE = {
                         ) {
                             continue;
                         }
-                        if (obj[m] === undefined) {
+                        if (['basic', 'unit'].includes(target.type.type.member[m].kind) && obj[m] === undefined) {
                             TYPE_ERROR();
                         }
                         if (target.type.type.member[m].kind === 'object') {
@@ -1293,7 +1301,7 @@ function createZeroChild(tag, platform, type, inf = {}) {
     );
 }
 
-function createNewChild(tag, platform, type, inf = {}) {}
+function createNewChild(tag, platform, type, inf = {}) { }
 
 function createVar(platform, type, inf) {
     return createZeroChild(OPERATORS.VAR, platform, type, inf);
@@ -1916,9 +1924,8 @@ const CODE_GENERATORS = {
                     type: expr.type,
                     expr: `SELECT * FROM ${sqlIdentOfType(
                         expr.type
-                    )} WHERE ${sqlIdentOfType(target.type)} == (${
-                        trySQL.expr
-                    })`,
+                    )} WHERE ${sqlIdentOfType(target.type)} == (${trySQL.expr
+                        })`,
                 };
             } else {
                 let host = CODE_GENERATORS[target.tag](
@@ -2078,7 +2085,7 @@ const CODE_GENERATORS = {
 
             return {
                 platform: PLATFORMS.SQL,
-                sqlParams: [],
+                sqlParams: sql.sqlParams,
                 type: expr.type,
                 expr: `SELECT * FROM "${tableName}" WHERE "${tableName}"."${priKeyName}" == (${sql.expr})`,
             };
@@ -3246,8 +3253,8 @@ const CODE_GENERATORS = {
                 expr: `INSERT INTO ${srcTableName} (${Object.keys(obj)
                     .map((m) => `"${m}"`)
                     .join(', ')}) VALUES (${Object.keys(obj)
-                    .map((m) => `(${obj[m].expr})`)
-                    .join(', ')})`,
+                        .map((m) => `(${obj[m].expr})`)
+                        .join(', ')})`,
             };
         } else {
             let srcTableName = src.type.type.typename;
@@ -3260,7 +3267,13 @@ const CODE_GENERATORS = {
                 ) {
                     continue;
                 }
-                newC[m] = new Proxy(target, PROXY_HANDLER)[m].pin();
+                if ((new Proxy(target, PROXY_HANDLER)[m])[RAW_DATA].type.kind === "object") {
+                    let priKey = (new Proxy(target, PROXY_HANDLER)[m])[RAW_DATA].type.primaryMember;
+                    let tblName = (new Proxy(target, PROXY_HANDLER)[m])[RAW_DATA].type.typename;
+                    newC[m] = new Proxy(target, PROXY_HANDLER)[m][priKey].pin()[tblName];
+                } else {
+                    newC[m] = new Proxy(target, PROXY_HANDLER)[m].pin();
+                }
             }
             let t = globalThis[srcTableName].new(newC);
             expr.valueObj.right = t[RAW_DATA];
@@ -3287,7 +3300,68 @@ const CODE_GENERATORS = {
         let right = expr.valueObj.right;
 
         if (left.type.kind === 'object') {
-            TODO();
+            let target = right;
+            let src = left;
+            if (target.tag === OPERATORS.NEW) {
+                let members = Object.keys(target.valueObj);
+                let sqlParams = [];
+                let obj = {};
+                for (const m of members) {
+                    obj[m] = CODE_GENERATORS[target.valueObj[m].tag](
+                        ctx,
+                        target.valueObj[m],
+                        PLATFORMS.SQL
+                    );
+                    if (obj[m] === null) {
+                        return null;
+                    }
+                    sqlParams.push(...(obj[m].sqlParams ?? []));
+                }
+                let srcTableName = src.type.typename;
+                let tableName = left.type.typename.split('.')[0];
+                let tableType = SQL_TABLE_TYPES[tableName];
+                let tablePriMem = tableType.primaryMember;
+                let lp = new Proxy(left, PROXY_HANDLER)[tablePriMem][RAW_DATA];
+                let lps = CODE_GENERATORS[lp.tag](ctx, lp, PLATFORMS.SQL);
+                if (lps === null) {
+                    return null;
+                }
+                sqlParams.push(...(lps.sqlParams ?? []));
+                return {
+                    platform: PLATFORMS.SQL,
+                    sqlParams: UTILS.uniqueArray(sqlParams),
+                    type: BASIC_TYPES.Void,
+                    expr: `UPDATE ${srcTableName} SET (${Object.keys(obj)
+                        .map((m) => `"${m}" = (${obj[m].expr})`)
+                        .join(', ')}) WHERE "${tableName}"."${tablePriMem}" == (${lps.expr})`,
+                };
+            } else {
+                let srcTableName = src.type.typename;
+                let newC = {};
+                let members = Object.keys(src.type.member);
+                for (const m of members) {
+                    if (
+                        src.type.primaryMember.includes(m) &&
+                        src.type.primaryAuto
+                    ) {
+                        continue;
+                    }
+                    if ((new Proxy(target, PROXY_HANDLER)[m])[RAW_DATA].type.kind === "object") {
+                        let priKey = (new Proxy(target, PROXY_HANDLER)[m])[RAW_DATA].type.primaryMember;
+                        let tblName = (new Proxy(target, PROXY_HANDLER)[m])[RAW_DATA].type.typename;
+                        newC[m] = new Proxy(target, PROXY_HANDLER)[m][priKey].pin()[tblName];
+                    } else {
+                        newC[m] = new Proxy(target, PROXY_HANDLER)[m].pin();
+                    }
+                }
+                let t = globalThis[srcTableName].new(newC);
+                expr.valueObj.right = t[RAW_DATA];
+                return CODE_GENERATORS[OPERATORS.SET](
+                    ctx,
+                    expr,
+                    platformRequire
+                );
+            }
         } else if (left.type.kind === 'array') {
             TODO();
         } else {
@@ -3667,11 +3741,19 @@ function unregisterFuncSignFromGlobalThis(fns) {
     }
 }
 
-function codeGen(lcode) {
-    loadSQLTableInf(readFileSync('./table.json').toString());
+function codeGen(lcode, verbose = false, cfg = {
+    tableInf: './table.json',
+    platformPrefer: PLATFORMS.HOST
+}) {
+    let oldPP = PREFER_PLATFORM;
+    PREFER_PLATFORM = cfg.platformPrefer;
+    loadSQLTableInf(readFileSync(cfg.tableInf).toString());
     registerSQLTableIntoGlobalThis();
     const fns = JSON.parse(lcode);
     registerFuncSignIntoGlobalThis(fns);
+
+    let dao = [];
+    let service = [];
 
     for (const fn of fns) {
         if (fn.signOnly) {
@@ -3686,11 +3768,23 @@ function codeGen(lcode) {
                 });
             })
         );
-        printGeneratedFunction(f);
+        if (verbose) {
+            printGeneratedFunction(f);
+        }
+        for (const d of f.daos) {
+            dao.push(UTILS.formatCode(d.fnBody));
+        }
+        service.push(UTILS.formatCode(f.host));
     }
 
     unregisterFuncSignFromGlobalThis(fns);
     unregisterSQLTableFromGlobalThis();
+    PREFER_PLATFORM = oldPP;
+
+    return {
+        dao,
+        service
+    }
 }
 
 function integrateTest(infileData) {
@@ -3787,30 +3881,32 @@ function integrateTest(infileData) {
         }
     });
 
-    codeGen(JSON.stringify(fns));
+    codeGen(JSON.stringify(fns), true);
 }
 
-PREFER_PLATFORM = PLATFORMS.HOST;
+if (process.argv.length > 2) {
+    const argv = minimist(process.argv.slice(2))
+    const tableInf = argv['tbl'];
+    const codeIn = argv['dsl'];
+    const daoOut = argv['odao'];
+    const serviceOut = argv['oservice'];
 
-integrateTest(`
-fn uuid() -> String
+    const res = codeGen(readFileSync(codeIn).toString(), false, {
+        tableInf: tableInf,
+        platformPrefer: PLATFORMS.HOST
+    });
 
-fn login(name: User.UserName, pw: User.PassWord) -> Token.Token {
-    name.User.PassWord.eq(pw).assert("用户名或密码不正确")
+    let dao = res.dao.map(d => `export ${d}`).join("\n\n");
+    dao = `import * from 'db.js'\n\n${dao}`;
+    let service = res.service.map(d => `export ${d}`).join("\n\n");
+    service = `import * from 'dao.js'\n\n${service}`;
 
-    let newTok = uuid().pin()
-    Token.append(Token.new({
-        ForUser: name.User,
-        Token: newTok
-    }))
-    return newTok
-}
-
-fn logout(tok: Token.Token) {
-    Token.remove(t => t.Token.eq(tok))
-}
-
-fn tokenToUser(tok: Token.Token) -> User {
-    return tok.Token.ForUser
-}
+    writeFileSync(daoOut, dao);
+    writeFileSync(serviceOut, service);
+} else {
+    integrateTest(`
+    fn updateGoods(gid: Goods.Id, g: Goods) {
+        gid.Goods.set(g)
+    }
 `);
+}

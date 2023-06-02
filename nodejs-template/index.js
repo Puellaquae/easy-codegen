@@ -64,7 +64,7 @@ const logout = async (tok) => {
     await void_SQLGet_YRmdqqLa7APn(tok);
 };
 
-const User_SQLGet_NhwaUjxp8pr8 = async () => {
+const User_SQLGet_ytNd9XWwK86k = async (tok) => {
     const db = await dbPool.acquire();
     const sql = `SELECT
                      *
@@ -79,16 +79,16 @@ const User_SQLGet_NhwaUjxp8pr8 = async () => {
                          WHERE
                              "Token"."Token" == ($tok)
                      )`;
-    return db.queryOne(sql);
+    return db.queryOne(sql, { $tok: tok });
 };
 
 const tokenToUser = async (tok) => {
-    return await User_SQLGet_NhwaUjxp8pr8();
+    return await User_SQLGet_ytNd9XWwK86k(tok);
 };
 
-let tok = await login('12345678');
+let tok = await login('aaa', 'bbb');
 console.log(tok);
-console.log(tokenToUser(tok));
-console.log(logout(tok));
-console.log(tokenToUser(tok));
+console.log(await tokenToUser(tok));
+await logout(tok);
+console.log(await tokenToUser(tok));
 
