@@ -25,4 +25,9 @@ function sum(arr) {
     return arr.reduce((p, c, _i, _a) => p + c);
 }
 
-export { like, sum };
+import nanoidDictionary from 'nanoid-dictionary';
+const { nolookalikes } = nanoidDictionary;
+import { customAlphabet } from 'nanoid';
+const uuid = customAlphabet(nolookalikes, 12);
+
+export { like, sum, uuid };

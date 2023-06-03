@@ -1425,7 +1425,7 @@ const CODE_GENERATORS = {
                 return {
                     platform: PLATFORMS.HOST,
                     type: expr.type,
-                    expr: `await ${fnName}()`,
+                    expr: `await dao.${fnName}()`,
                 };
             } else {
                 return {
@@ -3250,7 +3250,7 @@ const CODE_GENERATORS = {
                 platform: PLATFORMS.SQL,
                 sqlParams: UTILS.uniqueArray(sqlParams),
                 type: BASIC_TYPES.Void,
-                expr: `INSERT INTO ${srcTableName} (${Object.keys(obj)
+                expr: `INSERT INTO "${srcTableName}" (${Object.keys(obj)
                     .map((m) => `"${m}"`)
                     .join(', ')}) VALUES (${Object.keys(obj)
                         .map((m) => `(${obj[m].expr})`)
@@ -3480,7 +3480,7 @@ const CODE_GENERATORS = {
         return {
             platform: PLATFORMS.HOST,
             type: sql.type,
-            expr: `await ${fnName}(${sql.sqlParams.join(', ')})`,
+            expr: `await dao.${fnName}(${sql.sqlParams.join(', ')})`,
         };
     },
     [OPERATORS.FUNC]: (ctx, func, platformRequire = PLATFORMS.BOTH) => {
@@ -3897,12 +3897,12 @@ if (process.argv.length > 2) {
     });
 
     let dao = res.dao.map(d => `export ${d}`).join("\n\n");
-    dao = `import * from 'db.js'\n\n${dao}`;
+    dao = `import {dbPool} from './db.js'\n\n${dao}`;
     let service = res.service.map(d => `export ${d}`).join("\n\n");
-    service = `import * from 'dao.js'\n\n${service}`;
+    service = `import * as dao from './dao.js';\nimport {uuid} from "./utils.js"\nimport * as utils from "./utils.js"\n\n${service}`;
 
-    writeFileSync(daoOut, dao);
-    writeFileSync(serviceOut, service);
+    writeFileSync(daoOut, UTILS.formatCode(dao));
+    writeFileSync(serviceOut, UTILS.formatCode(service));
 } else {
     integrateTest(`
     fn updateGoods(gid: Goods.Id, g: Goods) {

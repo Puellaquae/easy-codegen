@@ -45,6 +45,13 @@ def logicGen(din, tin, dout, sout):
         exit(ret)
 
 
+def routeGen(din, lin, rin, routc, routi):
+    ret = subprocess.call(shell=True,
+                          args=["node", "index.js", "--din", os.path.join("../processing-data", din), "--lin", os.path.join("../processing-data", lin), "--rin", os.path.join("../processing-data", rin), "--routc", os.path.join("../processing-data", routc), "--routi", os.path.join("../processing-data", routi)], cwd="./route-resolver")
+    if ret != 0:
+        exit(ret)
+
+
 openfile = sys.argv[1] if len(sys.argv) > 1 else "processing-data/input.ecg"
 openfile = os.path.relpath(openfile, "processing-data/")
 
@@ -88,9 +95,22 @@ print(
 
 logicGen(lout1, douti, ldout, lsout)
 
-print("CLEAR <| DATA_JSON = {douti}".format(
-    lout1=lout1, douti=douti))
+routc = openfile + ".controller.js"
+routi = openfile + ".webmap.json"
 
+print(
+    "DATA_JSON = {douti}, LOGIC_S1 = {lout1}, ROUTE_S1 = {rout1} |> ROUTE PROCESS |> CONTROLLER_JS = {routc}, WEB_MAP = {routi}".format(lout1=lout1, douti=douti, rout1=rout1, routc=routc, routi=routi))
+
+
+routeGen(douti, lout1, rout1, routc, routi)
+
+print("CLEAR <| DATA_JSON = {douti}, LOGIC_S1 = {lout1}, ROUTE_S1 = {rout1}".format(
+    lout1=lout1, douti=douti, rout1=rout1))
+
+os.remove(os.path.join("./processing-data/", lout1))
 os.remove(os.path.join("./processing-data/", douti))
+os.remove(os.path.join("./processing-data/", rout1))
 
-
+os.system('copy "{src}" "{dst}"'.format(src=os.path.join("./processing-data", routc),dst=os.path.join("./nodejs-template/controller.js")))
+os.system('copy "{src}" "{dst}"'.format(src=os.path.join("./processing-data", ldout),dst=os.path.join("./nodejs-template/dao.js")))
+os.system('copy "{src}" "{dst}"'.format(src=os.path.join("./processing-data", lsout),dst=os.path.join("./nodejs-template/service.js")))

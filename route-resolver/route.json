@@ -3,60 +3,42 @@
         "url": "/login",
         "method": "post",
         "fnName": "login",
-        "args": [
-            "_",
-            "_"
-        ]
+        "args": ["_", "_"]
     },
     {
         "url": "/logout",
         "method": "get",
         "fnName": "logout",
-        "args": [
-            "_"
-        ]
+        "args": ["_"]
     },
     {
         "url": "/goods",
         "method": "get",
         "fnName": "getAllGoods",
-        "args": [
-            ""
-        ]
+        "args": [""]
     },
     {
         "url": "/goods/new",
         "method": "post",
         "fnName": "newGoods",
-        "args": [
-            "_"
-        ]
+        "args": ["_"]
     },
     {
         "url": "/goods/:gid/update",
         "method": "post",
         "fnName": "updateGoods",
-        "args": [
-            "gid",
-            "_"
-        ]
+        "args": ["gid", "_"]
     },
     {
         "url": "/order/new",
         "method": "post",
         "fnName": "newOrder",
-        "args": [
-            "_",
-            "_",
-            "_"
-        ]
+        "args": ["_", "_", "_"]
     },
     {
         "url": "/order/:oid/remove",
         "method": "post",
         "fnName": "removeOrder",
-        "args": [
-            "oid"
-        ]
+        "args": ["oid"]
     }
 ]

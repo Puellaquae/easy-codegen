@@ -32,7 +32,7 @@ const SETTING_FORM = {
     authModForUserTableName: {
         enable_if: {
             key: "userMod",
-            value: "empty", 
+            value: "empty",
         },
         label: "权限管理对应的用户数据表名",
         type: "text"
@@ -98,7 +98,7 @@ const SETTING_FORM = {
     orderModForUserTableName: {
         enable_if: {
             key: "userMod",
-            value: "empty", 
+            value: "empty",
         },
         label: "订单管理对应的用户数据表名",
         type: "text"
@@ -106,13 +106,135 @@ const SETTING_FORM = {
     orderModForGoodTableName: {
         enable_if: {
             key: "goodMod",
-            value: "empty", 
+            value: "empty",
         },
         label: "订单管理对应的商品数据表名",
         type: "text"
     },
 }
 
+const WebApis = {
+    login: {
+        url: "/login",
+        name: "login",
+        method: "POST",
+        params: {
+            name: {
+                label: "name",
+                type: "String",
+            },
+            pw: {
+                label: "pw",
+                type: "String",
+            },
+        },
+    },
+    logout: {
+        url: "/logout",
+        name: "logout",
+        method: "GET",
+        params: {
+            tok: {
+                label: "tok",
+                type: "String",
+            },
+        },
+    },
+    getAllGoods: {
+        url: "/goods",
+        name: "getAllGoods",
+        method: "GET",
+        params: {},
+    },
+    newGoods: {
+        url: "/goods/new",
+        name: "newGoods",
+        method: "POST",
+        params: {
+            g_Owner_Id: {
+                lable: "g.'Owner.Id'",
+                type: "Int",
+                own: "g",
+                key: "Owner.Id",
+            },
+            g_Name: {
+                label: "g.Name",
+                type: "String",
+                own: "g",
+                key: "Name",
+            },
+            g_Price: {
+                label: "g.Price",
+                type: "Int",
+                own: "g",
+                key: "Price",
+            },
+            g_Stock: {
+                label: "g.Stock",
+                type: "Int",
+                own: "g",
+                key: "Stock",
+            },
+        },
+    },
+    updateGoods: {
+        url: "/goods/:gid/update",
+        name: "updateGoods",
+        method: "POST",
+        params: {
+            g_Owner_Id: {
+                lable: "g.'Owner.Id'",
+                type: "Int",
+                own: "g",
+                key: "Owner.Id",
+            },
+            g_Name: {
+                label: "g.Name",
+                type: "String",
+                own: "g",
+                key: "Name",
+            },
+            g_Price: {
+                label: "g.Price",
+                type: "Int",
+                own: "g",
+                key: "Price",
+            },
+            g_Stock: {
+                label: "g.Stock",
+                type: "Int",
+                own: "g",
+                key: "Stock",
+            },
+        },
+    },
+    newOrder: {
+        url: "/order/new",
+        name: "newOrder",
+        method: "POST",
+        params: {
+            buyerId: {
+                label: "buyerId",
+                type: "Int",
+            },
+            gid: {
+                label: "gid",
+                type: "Int",
+            },
+            count: {
+                label: "count",
+                type: "Int",
+            },
+        },
+    },
+    removeOrder: {
+        url: "/order/:oid/remove",
+        name: "removeOrder",
+        method: "POST",
+        params: {},
+    },
+}
+
 export {
-    DEFAULT_SETTING, SETTING_FORM
+    DEFAULT_SETTING, SETTING_FORM, WebApis
 }

@@ -1,7 +1,7 @@
 import sqlite3 from 'sqlite3';
 import { rm } from 'fs/promises';
 import { existsSync } from 'fs';
-import { config } from '.config.js';
+import { config } from './config.js';
 import genericPool from 'generic-pool';
 
 class DB {

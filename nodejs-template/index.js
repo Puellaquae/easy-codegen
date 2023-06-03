@@ -1,94 +1,49 @@
 import koa from 'koa';
 import koaRouter from 'koa-router';
-import { dbPool } from './db.js';
-import * as utils from './utils.js';
-
-import nanoidDictionary from 'nanoid-dictionary';
-const { nolookalikes } = nanoidDictionary;
-import { customAlphabet } from 'nanoid';
-const uuid = customAlphabet(nolookalikes, 12);
+import { koaBody } from 'koa-body';
 
 let app = new koa();
 let router = new koaRouter();
 
-const User_SQLGet_PmrGjDg3mLEF = async (name) => {
-    const db = await dbPool.acquire();
-    const sql = `SELECT
-                     *
-                 FROM
-                     "User"
-                 WHERE
-                     "User"."UserName" == ($name)`;
-    return db.queryOne(sql, { $name: name });
-};
+app.use(async (ctx, next) => {
+    ctx.set('Access-Control-Allow-Origin', '*');
+    ctx.set('Access-Control-Allow-Methods', 'POST, GET, PUT, DELETE, OPTIONS');
+    ctx.set('Access-Control-Allow-Headers', 'Content-Type,Authorization,Upgrade-Insecure-Requests');
+    await next();
+});
+app.use(koaBody())
 
-const void_SQLGet_XKTzz3dYqcQX = async (EjaM4WdgnEPC, name) => {
-    const db = await dbPool.acquire();
-    const sql = `INSERT INTO
-                     Token ("Token", "ForUser.Id")
-                 VALUES
-                     (
-                         ($EjaM4WdgnEPC),
-                         (
-                             SELECT
-                                 "Id"
-                             FROM
-                                 "User"
-                             WHERE
-                                 "User"."UserName" == ($name)
-                         )
-                     )`;
-    return db.run(sql, { $EjaM4WdgnEPC: EjaM4WdgnEPC, $name: name });
-};
+router.get('/test', (ctx, next) => {
+    ctx.body = 'hello koa-route'
+})
 
-const login = async (name, pw) => {
-    await (async () => {
-        if (!((await User_SQLGet_PmrGjDg3mLEF(name)).PassWord === pw)) {
-            throw new Error("用户名或密码不正确");
-        }
-    })();
-    let EjaM4WdgnEPC = uuid();
-    await void_SQLGet_XKTzz3dYqcQX(EjaM4WdgnEPC, name);
-    return EjaM4WdgnEPC;
-};
+router.get('/test/json', (ctx, next) => {
+    ctx.body = {
+        kind: 'get',
+        aa: [1, '2', false]
+    }
+})
 
-const void_SQLGet_YRmdqqLa7APn = async (tok) => {
-    const db = await dbPool.acquire();
-    const sql = `DELETE FROM "Token"
-                 WHERE
-                     (("Token"."Token") == ($tok))`;
-    return db.run(sql, { $tok: tok });
-};
+router.get('/test/url/:aaa', (ctx, next) => {
+    ctx.body = {
+        aaa: ctx.params.aaa
+    }
+})
 
-const logout = async (tok) => {
-    await void_SQLGet_YRmdqqLa7APn(tok);
-};
+router.get('/test/urlq', (ctx, next) => {
+    ctx.body = {
+        query: ctx.query
+    }
+})
 
-const User_SQLGet_ytNd9XWwK86k = async (tok) => {
-    const db = await dbPool.acquire();
-    const sql = `SELECT
-                     *
-                 FROM
-                     "User"
-                 WHERE
-                     "User"."Id" == (
-                         SELECT
-                             "ForUser.Id"
-                         FROM
-                             "Token"
-                         WHERE
-                             "Token"."Token" == ($tok)
-                     )`;
-    return db.queryOne(sql, { $tok: tok });
-};
+router.post('/test/body', (ctx, next) => {
+    ctx.body = {
+        query: ctx.query,
+        body: ctx.request.body
+    }
+})
 
-const tokenToUser = async (tok) => {
-    return await User_SQLGet_ytNd9XWwK86k(tok);
-};
-
-let tok = await login('aaa', 'bbb');
-console.log(tok);
-console.log(await tokenToUser(tok));
-await logout(tok);
-console.log(await tokenToUser(tok));
-
+app
+    .use(router.routes())
+    .use(router.allowedMethods())
+    .listen(8877);
