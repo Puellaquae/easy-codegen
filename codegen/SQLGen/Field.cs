@@ -69,8 +69,9 @@ namespace SQLGen
         public IntRange? intRange = null;
         public List<string>? strEnum = null;
 
+        public bool isCombinePriKey = false;
         public bool IsNullable { get => !isUnique && isNullable; set => isNullable = value; }
-        public bool IsUnique { get => IsPrimaryKey || isUnique; set => isUnique = value; }
+        public bool IsUnique { get => (!isCombinePriKey && IsPrimaryKey) || isUnique; set => isUnique = value; }
         public bool IsPrimaryKey { get => isPrimaryKey; set => isPrimaryKey = value; }
         /// <summary>
         /// is int or string, not any array

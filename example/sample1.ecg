@@ -1,0 +1,149 @@
+entity Permission {
+    User: User
+    Level: Int
+}
+
+entity User {
+    UserName: @String
+    PassWord: String
+}
+
+entity Token {
+    ForUser: User
+    Token: @String
+}
+
+entity Goods {
+    Owner: User
+    Name: String
+    Price: Int
+    Stock: Int
+}
+
+entity Order {
+    Buyer: User
+    Good: Goods
+    Count: Int
+    TotalPrice: Int
+}
+
+fn permissionCheck(uid: User.Id, requireLevel: Int) -> Bool {
+    return Permission.filter(u => u.User.Id.eq(uid)).first().Level.ge(requireLevel)
+}
+
+fn setPermissLevel(uid: User.Id, level: Int) {
+    let p = Permission.filter(p => p.User.Id.eq(uid))
+    let cnt = p.count()
+    cnt.eq(0).cond(() => {
+        Permission.append(Permission.new({
+            User: uid.User,
+            Level: level
+        }))
+    }, () => {
+        p.first().Level.set(level)
+    })
+}
+
+fn signup(u: User) {
+    User.append(u)
+}
+
+fn signdown(uid: User.Id) {
+    User.remove(u => u.Id.eq(uid))
+}
+
+fn uuid() -> String
+
+fn login(name: User.UserName, pw: User.PassWord) -> Token.Token {
+    name.User.PassWord.eq(pw).assert("用户名或密码不正确")
+
+    let newTok = uuid().pin()
+    Token.append(Token.new({
+        ForUser: name.User,
+        Token: newTok
+    }))
+    return newTok
+}
+
+fn logout(tok: Token.Token) {
+    Token.remove(t => t.Token.eq(tok))
+}
+
+fn tokenToUser(tok: Token.Token) -> User {
+    return tok.Token.ForUser
+}
+
+fn getAllGoods() -> [Goods] {
+    return Goods
+}
+
+fn newGoods(g: Goods) {
+    Goods.append(g)
+}
+
+fn removeGoods(gid: Goods.Id) {
+    Goods.remove(g => g.Id.eq(gid))
+}
+
+fn updateGoods(gid: Goods.Id, g: Goods) {
+    gid.Goods.set(g)
+}
+
+fn newOrder(buyerId: User.Id, gid: Goods.Id, count: Int) {
+    Order.append(Order.new({
+        Buyer: buyerId.User,
+        Good: gid.Goods,
+        Count: count,
+        TotalPrice: gid.Goods.Price.mul(count).pin()
+    }))
+}
+
+fn removeOrder(oid: Order.Id) {
+    Order.remove(o => o.Id.eq(oid))
+}
+
+fn getAllOrder() -> [Order] {
+    return Order
+}
+
+fn getOnesOrder(uid: User.Id) -> [Order] {
+    return Order.filter(o => o.Buyer.Id.eq(uid))
+}
+
+route {
+    "login" {
+        post => login(_, _)
+    }
+    "logout" {
+        get => logout(_)
+    }
+    "goods" {
+        get => getAllGoods()
+        "new" {
+            post => newGoods(_)
+        }
+        ":gid" {
+            "update" {
+                post => updateGoods(gid, _)
+            } 
+        }
+    }
+    "user" {
+        ":uid" {
+            "orders" {
+                get => getOnesOrder(uid)
+            }
+        }
+    }
+    "order" {
+        get => getAllOrder()
+        "new" {
+            post => newOrder(_, _, _)
+        }
+        ":oid" {
+            "remove" {
+                post => removeOrder(oid)
+            }
+        }
+    }
+}

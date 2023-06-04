@@ -1,35 +1,44 @@
 import { dbPool } from "./db.js";
 
-export const PermissionArray_SQLGetTable_DVBQKLNnhVQn = async () => {
+export const PermissionArray_SQLGetTable_K4L4WHptXdEM = async () => {
     let db = await dbPool.acquire();
-    return db.query(`SELECT * FROM "Permission"`);
+    let ret = await db.query(`SELECT * FROM "Permission"`);
+    dbPool.release(db);
+    return ret;
 };
 
-export const PermissionArray_SQLGetTable_btf6Cfgip9J4 = async () => {
+export const PermissionArray_SQLGetTable_LWFLzDNkeXqN = async () => {
     let db = await dbPool.acquire();
-    return db.query(`SELECT * FROM "Permission"`);
+    let ret = await db.query(`SELECT * FROM "Permission"`);
+    dbPool.release(db);
+    return ret;
 };
 
-export const void_SQLGet_MCC6Az8QFcw9 = async (level, uid) => {
+export const User_SQLGet_DigJFzzr7j8U = async (uid) => {
+    const db = await dbPool.acquire();
+    const sql = `SELECT
+                     *
+                 FROM
+                     "User"
+                 WHERE
+                     "User"."Id" == ($uid)`;
+    let ret = await db.queryOne(sql, { $uid: uid });
+    dbPool.release(db);
+    return ret;
+};
+
+export const Void_SQLGet_BpWipE9FjKTt = async (level, Fx7eYeCfemGz) => {
     const db = await dbPool.acquire();
     const sql = `INSERT INTO
                      "Permission" ("Level", "User.Id")
                  VALUES
-                     (
-                         ($level),
-                         (
-                             SELECT
-                                 "Id"
-                             FROM
-                                 "User"
-                             WHERE
-                                 "User"."Id" == ($uid)
-                         )
-                     )`;
-    return db.run(sql, { $level: level, $uid: uid });
+                     (($level), ($Fx7eYeCfemGz))`;
+    let ret = await db.run(sql, { $level: level, $Fx7eYeCfemGz: Fx7eYeCfemGz });
+    dbPool.release(db);
+    return ret;
 };
 
-export const void_SQLGet_LzpG8fcCMymm = async (level, uid) => {
+export const Void_SQLGet_CJkbxwrjCwYM = async (level, uid) => {
     const db = await dbPool.acquire();
     const sql = `UPDATE "Permission"
                  SET
@@ -45,30 +54,45 @@ export const void_SQLGet_LzpG8fcCMymm = async (level, uid) => {
                          LIMIT
                              1
                      )`;
-    return db.run(sql, { $level: level, $uid: uid });
+    let ret = await db.run(sql, { $level: level, $uid: uid });
+    dbPool.release(db);
+    return ret;
 };
 
-export const void_SQLGet_DgbD9WctUrW9 = async (NQmqqpAcPLYy, v6CxFpJqqfMgi) => {
+export const Void_SQLGet_eFdaxknMVCGn = async (
+    Kkgiw7H7rDWt,
+    YUFeqhzbHrdP,
+    v4cHHrwFkUd6F
+) => {
     const db = await dbPool.acquire();
     const sql = `INSERT INTO
-                     "User" ("UserName", "PassWord")
+                     "User" ("UserName", "PassWord", "Age")
                  VALUES
-                     (($NQmqqpAcPLYy), ($v6CxFpJqqfMgi))`;
-    return db.run(sql, {
-        $NQmqqpAcPLYy: NQmqqpAcPLYy,
-        $v6CxFpJqqfMgi: v6CxFpJqqfMgi,
+                     (
+                         ($Kkgiw7H7rDWt),
+                         ($YUFeqhzbHrdP),
+                         ($v4cHHrwFkUd6F)
+                     )`;
+    let ret = await db.run(sql, {
+        $Kkgiw7H7rDWt: Kkgiw7H7rDWt,
+        $YUFeqhzbHrdP: YUFeqhzbHrdP,
+        $v4cHHrwFkUd6F: v4cHHrwFkUd6F,
     });
+    dbPool.release(db);
+    return ret;
 };
 
-export const void_SQLGet_qMWAGcyagKLr = async (uid) => {
+export const Void_SQLGet_kkMLFccpxqgr = async (uid) => {
     const db = await dbPool.acquire();
     const sql = `DELETE FROM "User"
                  WHERE
                      (("User"."Id") == ($uid))`;
-    return db.run(sql, { $uid: uid });
+    let ret = await db.run(sql, { $uid: uid });
+    dbPool.release(db);
+    return ret;
 };
 
-export const User_SQLGet_x4BmnByCgwrt = async (name) => {
+export const User_SQLGet_bDnaRThM3bAg = async (name) => {
     const db = await dbPool.acquire();
     const sql = `SELECT
                      *
@@ -76,37 +100,49 @@ export const User_SQLGet_x4BmnByCgwrt = async (name) => {
                      "User"
                  WHERE
                      "User"."UserName" == ($name)`;
-    return db.queryOne(sql, { $name: name });
+    let ret = await db.queryOne(sql, { $name: name });
+    dbPool.release(db);
+    return ret;
 };
 
-export const void_SQLGet_v94ytFBr6XYxw = async (CTYttR4VQnm9, name) => {
+export const User_SQLGet_kn7QWWiK7nC3 = async (name) => {
+    const db = await dbPool.acquire();
+    const sql = `SELECT
+                     *
+                 FROM
+                     "User"
+                 WHERE
+                     "User"."UserName" == ($name)`;
+    let ret = await db.queryOne(sql, { $name: name });
+    dbPool.release(db);
+    return ret;
+};
+
+export const Void_SQLGet_Ew4n8xpQxf4w = async (iFbfznPXdMxK, UW8NqRFxJBeY) => {
     const db = await dbPool.acquire();
     const sql = `INSERT INTO
                      "Token" ("Token", "ForUser.Id")
                  VALUES
-                     (
-                         ($CTYttR4VQnm9),
-                         (
-                             SELECT
-                                 "Id"
-                             FROM
-                                 "User"
-                             WHERE
-                                 "User"."UserName" == ($name)
-                         )
-                     )`;
-    return db.run(sql, { $CTYttR4VQnm9: CTYttR4VQnm9, $name: name });
+                     (($iFbfznPXdMxK), ($UW8NqRFxJBeY))`;
+    let ret = await db.run(sql, {
+        $iFbfznPXdMxK: iFbfznPXdMxK,
+        $UW8NqRFxJBeY: UW8NqRFxJBeY,
+    });
+    dbPool.release(db);
+    return ret;
 };
 
-export const void_SQLGet_mA36fPR4Kgit = async (tok) => {
+export const Void_SQLGet_UJJPNfBHeXfV = async (tok) => {
     const db = await dbPool.acquire();
     const sql = `DELETE FROM "Token"
                  WHERE
                      (("Token"."Token") == ($tok))`;
-    return db.run(sql, { $tok: tok });
+    let ret = await db.run(sql, { $tok: tok });
+    dbPool.release(db);
+    return ret;
 };
 
-export const User_SQLGet_ViRjayBwa8XR = async (tok) => {
+export const User_SQLGet_KGUGXwKEg8A4 = async (tok) => {
     const db = await dbPool.acquire();
     const sql = `SELECT
                      *
@@ -121,76 +157,105 @@ export const User_SQLGet_ViRjayBwa8XR = async (tok) => {
                          WHERE
                              "Token"."Token" == ($tok)
                      )`;
-    return db.queryOne(sql, { $tok: tok });
+    let ret = await db.queryOne(sql, { $tok: tok });
+    dbPool.release(db);
+    return ret;
 };
 
-export const GoodsArray_SQLGetTable_bBxaWe7rXUmy = async () => {
+export const GoodsArray_SQLGetTable_XkMhrqgQGJhC = async () => {
     let db = await dbPool.acquire();
-    return db.query(`SELECT * FROM "Goods"`);
+    let ret = await db.query(`SELECT * FROM "Goods"`);
+    dbPool.release(db);
+    return ret;
 };
 
-export const void_SQLGet_keTaxMQq3hLg = async (
-    qbc468NWTmrR,
-    L4ncQXjcyNcm,
-    wdnW4g7BMVMJ,
-    RxKWCekhKaJr
+export const User_SQLGet_Bd7kHUi4Twmz = async (ttnX9yihE78G) => {
+    const db = await dbPool.acquire();
+    const sql = `SELECT
+                     *
+                 FROM
+                     "User"
+                 WHERE
+                     "User"."Id" == ($ttnX9yihE78G)`;
+    let ret = await db.queryOne(sql, { $ttnX9yihE78G: ttnX9yihE78G });
+    dbPool.release(db);
+    return ret;
+};
+
+export const Void_SQLGet_bTF8CdxVihHB = async (
+    FGyq4nA3L7XD,
+    v4G6miGn4CgWg,
+    hmFqHT7CdMiA,
+    aepwyPJitFiw,
+    qVdDnpcVdiWq
 ) => {
     const db = await dbPool.acquire();
     const sql = `INSERT INTO
-                     "Goods" ("Name", "Price", "Stock", "Owner.Id")
+                     "Goods" (
+                         "Name",
+                         "Price",
+                         "Stock",
+                         "Description",
+                         "Owner.Id"
+                     )
                  VALUES
                      (
-                         ($qbc468NWTmrR),
-                         ($L4ncQXjcyNcm),
-                         ($wdnW4g7BMVMJ),
-                         (
-                             SELECT
-                                 "Id"
-                             FROM
-                                 "User"
-                             WHERE
-                                 "User"."Id" == ($RxKWCekhKaJr)
-                         )
+                         ($FGyq4nA3L7XD),
+                         ($v4G6miGn4CgWg),
+                         ($hmFqHT7CdMiA),
+                         ($aepwyPJitFiw),
+                         ($qVdDnpcVdiWq)
                      )`;
-    return db.run(sql, {
-        $qbc468NWTmrR: qbc468NWTmrR,
-        $L4ncQXjcyNcm: L4ncQXjcyNcm,
-        $wdnW4g7BMVMJ: wdnW4g7BMVMJ,
-        $RxKWCekhKaJr: RxKWCekhKaJr,
+    let ret = await db.run(sql, {
+        $FGyq4nA3L7XD: FGyq4nA3L7XD,
+        $v4G6miGn4CgWg: v4G6miGn4CgWg,
+        $hmFqHT7CdMiA: hmFqHT7CdMiA,
+        $aepwyPJitFiw: aepwyPJitFiw,
+        $qVdDnpcVdiWq: qVdDnpcVdiWq,
     });
+    dbPool.release(db);
+    return ret;
 };
 
-export const void_SQLGet_v6RECeezrpT8w = async (gid) => {
+export const Void_SQLGet_L7WrHngziLf6 = async (gid) => {
     const db = await dbPool.acquire();
     const sql = `DELETE FROM "Goods"
                  WHERE
                      (("Goods"."Id") == ($gid))`;
-    return db.run(sql, { $gid: gid });
+    let ret = await db.run(sql, { $gid: gid });
+    dbPool.release(db);
+    return ret;
 };
 
-export const void_SQLGet_v9NE9mPqQP7Qh = async (
-    TWXWTyKX33z3,
-    fpbg8PgTKth8,
-    FLFCzpnDbJTg,
-    eEjmxnk3JP6e,
+export const User_SQLGet_KY9LLnJ3xqaG = async (xmYF9HdApm9b) => {
+    const db = await dbPool.acquire();
+    const sql = `SELECT
+                     *
+                 FROM
+                     "User"
+                 WHERE
+                     "User"."Id" == ($xmYF9HdApm9b)`;
+    let ret = await db.queryOne(sql, { $xmYF9HdApm9b: xmYF9HdApm9b });
+    dbPool.release(db);
+    return ret;
+};
+
+export const Void_SQLGet_chcqbDBeC6Ei = async (
+    Edat6G48XxaL,
+    GTBe4pcXRq4g,
+    NrAVjebMWGLp,
+    bakznm63pKBg,
+    k9wxBDEgFeDt,
     gid
 ) => {
     const db = await dbPool.acquire();
     const sql = `UPDATE Goods
                  SET
-                     (
-                         "Name" = ($TWXWTyKX33z3),
-                         "Price" = ($fpbg8PgTKth8),
-                         "Stock" = ($FLFCzpnDbJTg),
-                         "Owner.Id" = (
-                             SELECT
-                                 "Id"
-                             FROM
-                                 "User"
-                             WHERE
-                                 "User"."Id" == ($eEjmxnk3JP6e)
-                         )
-                     )
+                     "Name" = ($Edat6G48XxaL),
+                     "Price" = ($GTBe4pcXRq4g),
+                     "Stock" = ($NrAVjebMWGLp),
+                     "Description" = ($bakznm63pKBg),
+                     "Owner.Id" = ($k9wxBDEgFeDt)
                  WHERE
                      "Goods"."Id" == (
                          SELECT
@@ -200,73 +265,84 @@ export const void_SQLGet_v9NE9mPqQP7Qh = async (
                          WHERE
                              "Goods"."Id" == ($gid)
                      )`;
-    return db.run(sql, {
-        $TWXWTyKX33z3: TWXWTyKX33z3,
-        $fpbg8PgTKth8: fpbg8PgTKth8,
-        $FLFCzpnDbJTg: FLFCzpnDbJTg,
-        $eEjmxnk3JP6e: eEjmxnk3JP6e,
+    let ret = await db.run(sql, {
+        $Edat6G48XxaL: Edat6G48XxaL,
+        $GTBe4pcXRq4g: GTBe4pcXRq4g,
+        $NrAVjebMWGLp: NrAVjebMWGLp,
+        $bakznm63pKBg: bakznm63pKBg,
+        $k9wxBDEgFeDt: k9wxBDEgFeDt,
         $gid: gid,
     });
+    dbPool.release(db);
+    return ret;
 };
 
-export const Goods_SQLGet_cTnPPMa68KJB = async (gid) => {
+export const User_SQLGet_bdKUJtY8Nmzn = async (buyerId) => {
     const db = await dbPool.acquire();
     const sql = `SELECT
                      *
                  FROM
-                     "Goods"
+                     "User"
                  WHERE
-                     "Goods"."Id" == ($gid)`;
-    return db.queryOne(sql, { $gid: gid });
+                     "User"."Id" == ($buyerId)`;
+    let ret = await db.queryOne(sql, { $buyerId: buyerId });
+    dbPool.release(db);
+    return ret;
 };
 
-export const void_SQLGet_R33Nz7tjVfqG = async (
-    count,
-    tm4yWbC948B4,
-    buyerId,
-    gid
-) => {
+export const Void_SQLGet_EatQ6NWzdnpJ = async (DdjeFVcmmHgB) => {
     const db = await dbPool.acquire();
     const sql = `INSERT INTO
-                     "Order" ("Count", "TotalPrice", "Buyer.Id", "Good.Id")
+                     "Order" ("TotalPrice", "Buyer.Id")
                  VALUES
-                     (
-                         ($count),
-                         ($tm4yWbC948B4),
-                         (
-                             SELECT
-                                 "Id"
-                             FROM
-                                 "User"
-                             WHERE
-                                 "User"."Id" == ($buyerId)
-                         ),
-                         (
-                             SELECT
-                                 "Id"
-                             FROM
-                                 "Goods"
-                             WHERE
-                                 "Goods"."Id" == ($gid)
-                         )
-                     )`;
-    return db.run(sql, {
-        $count: count,
-        $tm4yWbC948B4: tm4yWbC948B4,
-        $buyerId: buyerId,
-        $gid: gid,
-    });
+                     ((0), ($DdjeFVcmmHgB))`;
+    let ret = await db.run(sql, { $DdjeFVcmmHgB: DdjeFVcmmHgB });
+    dbPool.release(db);
+    return ret;
 };
 
-export const void_SQLGet_jRJCAxkGw4hH = async (oid) => {
+export const Void_SQLGet_ziMwmdwqyUxJ = async (oid) => {
     const db = await dbPool.acquire();
     const sql = `DELETE FROM "Order"
                  WHERE
                      (("Order"."Id") == ($oid))`;
-    return db.run(sql, { $oid: oid });
+    let ret = await db.run(sql, { $oid: oid });
+    dbPool.release(db);
+    return ret;
 };
 
-export const OrderArray_SQLGetTable_NcMb9jtTBGCr = async () => {
+export const OrderArray_SQLGetTable_EwKw76GbNLhp = async () => {
     let db = await dbPool.acquire();
-    return db.query(`SELECT * FROM "Order"`);
+    let ret = await db.query(`SELECT * FROM "Order"`);
+    dbPool.release(db);
+    return ret;
+};
+
+export const OrderItemArray_SQLGet_YMxTmLrqUMbq = async () => {
+    const db = await dbPool.acquire();
+    const sql = `SELECT
+                     "OrderItem"
+                 FROM
+                     "Order-Items-OrderItem",
+                     "OrderItem"
+                 WHERE
+                     "OrderItem"."Id" == "Order-Items-OrderItem"."R.OrderItem.Id"
+                     AND "Order-Items-OrderItem"."L.Order.Id" == (
+                         SELECT
+                             "Id"
+                         FROM
+                             "Order"
+                         WHERE
+                             "Order"."Id" == ($oid)
+                     )`;
+    let ret = await db.query(sql);
+    dbPool.release(db);
+    return ret;
+};
+
+export const OrderArray_SQLGetTable_eb8VinP4PHry = async () => {
+    let db = await dbPool.acquire();
+    let ret = await db.query(`SELECT * FROM "Order"`);
+    dbPool.release(db);
+    return ret;
 };

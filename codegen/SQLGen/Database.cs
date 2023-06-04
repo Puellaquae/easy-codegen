@@ -163,12 +163,16 @@ namespace SQLGen
                             dataTable.AddField(new Field(dataTable, $"{table.name}.{leftPriKey.name}", leftPriKey.type)
                             {
                                 IsPrimaryKey = true,
+                                IsUnique = false,
+                                isCombinePriKey = true,
                                 isForeignKey = true,
                                 foreignLink = leftPriKey,
                             });
                             dataTable.AddField(new Field(dataTable, $"Value", field.type)
                             {
                                 IsPrimaryKey = true,
+                                isCombinePriKey = true,
+                                IsUnique = false,
                                 intRange = field.intRange,
                                 strEnum = field.strEnum,
                             });

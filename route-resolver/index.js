@@ -53,18 +53,47 @@ function routeProcess(
                                                     sql[a.type].member[k]
                                                         .typename
                                                 ].primaryMember;
-                                            return `['${k}.${pk}']: ctx.query['${a.name}-${k}-${pk}']`;
+                                            let type = sql[
+                                                sql[a.type].member[k]
+                                                    .typename
+                                            ].member[pk].alias;
+                                            if (type === "Int") {
+                                                return `['${k}.${pk}']: parseInt(ctx.query['${a.name}-${k}-${pk}'], 10)`;
+                                            } else {
+                                                return `['${k}.${pk}']: ctx.query['${a.name}-${k}-${pk}']`;
+                                            }
                                         }
-                                        return `['${k}']: ctx.query['${a.name}-${k}']`;
+                                        let t = sql[a.type].member[k].alias;
+                                        if (t === "Int") {
+                                            return `['${k}']: parseInt(ctx.query['${a.name}-${k}'], 10)`;
+                                        } else {
+                                            return `['${k}']: ctx.query['${a.name}-${k}']`;
+                                        }
                                     })
                                     .filter((f) => f !== null)
                                     .join(',\n');
                                 return `{${r}}`;
                             } else {
-                                return `ctx.query['${a.name}']`;
+                                let t = a.type.split('.')[0]
+                                if (Object.keys(sql).includes(t)) {
+                                    t = sql[a.type.split('.')[0]].member[a.type.split('.').slice(1).join('.')].alias;
+                                }
+                                if (t === "Int") {
+                                    return `parseInt(ctx.query['${a.name}'], 10)`;
+                                } else {
+                                    return `ctx.query['${a.name}']`;
+                                }
                             }
                         } else {
-                            return `ctx.params['${r.args[i]}']`;
+                            let t = a.type.split('.')[0]
+                            if (Object.keys(sql).includes(t)) {
+                                t = sql[a.type.split('.')[0]].member[a.type.split('.').slice(1).join('.')].alias;
+                            }
+                            if (t === "Int") {
+                                return `parseInt(ctx.params['${r.args[i]}'], 10)`;
+                            } else {
+                                return `ctx.params['${r.args[i]}']`;
+                            }
                         }
                     })
                     .join(', ');
@@ -79,7 +108,8 @@ function routeProcess(
                     processFn: '${r.fnName}'
                 };
                 } catch (err) {
-                    ctx.body = {
+                console.log(err)
+                ctx.body = {
                         ok:false,
                         processFn: '${r.fnName}',
                         err: err.message
@@ -98,6 +128,7 @@ function routeProcess(
                     res
                 }   
             }catch(err){
+                console.log(err)
                 ctx.body = {
                     ok:false,
                     processFn: '${r.fnName}',
@@ -114,7 +145,15 @@ function routeProcess(
                         if (r.args[i] === '_') {
                             return `ctx.request.body['${a.name}']`;
                         } else {
-                            return `ctx.params['${r.args[i]}']`;
+                            let t = a.type.split('.')[0]
+                            if (Object.keys(sql).includes(t)) {
+                                t = sql[a.type.split('.')[0]].member[a.type.split('.').slice(1).join('.')].alias;
+                            }
+                            if (t === "Int") {
+                                return `parseInt(ctx.params['${r.args[i]}'], 10)`;
+                            } else {
+                                return `ctx.params['${r.args[i]}']`;
+                            }
                         }
                     })
                     .join(', ');
@@ -129,7 +168,8 @@ function routeProcess(
                     processFn: '${r.fnName}'
                 };
                 } catch (err) {
-                    ctx.body = {
+                console.log(err)
+                ctx.body = {
                         ok:false,
                         processFn: '${r.fnName}',
                         err: err.message
@@ -148,6 +188,7 @@ function routeProcess(
                     res
                 }   
             }catch(err){
+                console.log(err)
                 ctx.body = {
                     ok:false,
                     processFn: '${r.fnName}',
@@ -224,7 +265,11 @@ function webMap(
                             return `"${a.name}": {"label":"${a.name}","type":"${t}"}`;
                         }
                     } else {
-                        return null;
+                        let t = a.type.split('.')[0]
+                        if (Object.keys(sql).includes(t)) {
+                            t = sql[a.type.split('.')[0]].member[a.type.split('.').slice(1).join('.')].alias;
+                        }
+                        return `"${a.name}": {"label":"${a.name}","type":"${t}", "place":"url"}`;
                     }
                 })
                 .filter(f => f !== null)

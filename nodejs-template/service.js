@@ -4,107 +4,145 @@ import * as utils from "./utils.js";
 
 export const permissionCheck = async (uid, requireLevel) => {
     return (
-        (await dao.PermissionArray_SQLGetTable_DVBQKLNnhVQn()).filter(
-            async (filter_Md7dMfd7JAga) => {
-                return filter_Md7dMfd7JAga["User.Id"] === uid;
-            }
+        (
+            await utils.asyncFilter(
+                await dao.PermissionArray_SQLGetTable_K4L4WHptXdEM(),
+                async (filter_xHqNCk8wixqe) => {
+                    return filter_xHqNCk8wixqe["User.Id"] === uid;
+                }
+            )
         )[0].Level >= requireLevel
     );
 };
 
 export const setPermissLevel = async (uid, level) => {
-    (async () => {
+    await (async () => {
         if (
-            (await dao.PermissionArray_SQLGetTable_btf6Cfgip9J4()).filter(
-                async (filter_rNnKyTd4ihcG) => {
-                    return filter_rNnKyTd4ihcG["User.Id"] === uid;
-                }
+            (
+                await utils.asyncFilter(
+                    await dao.PermissionArray_SQLGetTable_LWFLzDNkeXqN(),
+                    async (filter_v8VGUJh4jf8Rg) => {
+                        return filter_v8VGUJh4jf8Rg["User.Id"] === uid;
+                    }
+                )
             ).length === 0
         ) {
             return (async () => {
-                await dao.void_SQLGet_MCC6Az8QFcw9(level, uid);
+                let Fx7eYeCfemGz = await (
+                    await dao.User_SQLGet_DigJFzzr7j8U(uid)
+                ).Id;
+                await dao.Void_SQLGet_BpWipE9FjKTt(level, Fx7eYeCfemGz);
             })();
         } else {
             return (async () => {
-                await dao.void_SQLGet_LzpG8fcCMymm(level, uid);
+                await dao.Void_SQLGet_CJkbxwrjCwYM(level, uid);
             })();
         }
     })();
 };
 
 export const signup = async (u) => {
-    let NQmqqpAcPLYy = u.UserName;
-    let v6CxFpJqqfMgi = u.PassWord;
-    await dao.void_SQLGet_DgbD9WctUrW9(NQmqqpAcPLYy, v6CxFpJqqfMgi);
+    let Kkgiw7H7rDWt = await u.UserName;
+    let YUFeqhzbHrdP = await u.PassWord;
+    let v4cHHrwFkUd6F = await u.Age;
+    await dao.Void_SQLGet_eFdaxknMVCGn(
+        Kkgiw7H7rDWt,
+        YUFeqhzbHrdP,
+        v4cHHrwFkUd6F
+    );
 };
 
 export const signdown = async (uid) => {
-    await dao.void_SQLGet_qMWAGcyagKLr(uid);
+    await dao.Void_SQLGet_kkMLFccpxqgr(uid);
 };
 
 export const login = async (name, pw) => {
     await (async () => {
-        if (!((await dao.User_SQLGet_x4BmnByCgwrt(name)).PassWord === pw)) {
+        if (!((await dao.User_SQLGet_bDnaRThM3bAg(name)).PassWord === pw)) {
             throw new Error("用户名或密码不正确");
         }
     })();
-    let CTYttR4VQnm9 = uuid();
-    await dao.void_SQLGet_v94ytFBr6XYxw(CTYttR4VQnm9, name);
-    return CTYttR4VQnm9;
+    let iFbfznPXdMxK = await await uuid();
+    let UW8NqRFxJBeY = await (await dao.User_SQLGet_kn7QWWiK7nC3(name)).Id;
+    await dao.Void_SQLGet_Ew4n8xpQxf4w(iFbfznPXdMxK, UW8NqRFxJBeY);
+    return iFbfznPXdMxK;
 };
 
 export const logout = async (tok) => {
-    await dao.void_SQLGet_mA36fPR4Kgit(tok);
+    await dao.Void_SQLGet_UJJPNfBHeXfV(tok);
 };
 
 export const tokenToUser = async (tok) => {
-    return await dao.User_SQLGet_ViRjayBwa8XR(tok);
+    return await dao.User_SQLGet_KGUGXwKEg8A4(tok);
 };
 
 export const getAllGoods = async () => {
-    return await dao.GoodsArray_SQLGetTable_bBxaWe7rXUmy();
+    return await dao.GoodsArray_SQLGetTable_XkMhrqgQGJhC();
 };
 
 export const newGoods = async (g) => {
-    let RxKWCekhKaJr = g["Owner.Id"];
-    let qbc468NWTmrR = g.Name;
-    let L4ncQXjcyNcm = g.Price;
-    let wdnW4g7BMVMJ = g.Stock;
-    await dao.void_SQLGet_keTaxMQq3hLg(
-        qbc468NWTmrR,
-        L4ncQXjcyNcm,
-        wdnW4g7BMVMJ,
-        RxKWCekhKaJr
+    let ttnX9yihE78G = await g["Owner.Id"];
+    let FGyq4nA3L7XD = await g.Name;
+    let v4G6miGn4CgWg = await g.Price;
+    let hmFqHT7CdMiA = await g.Stock;
+    let aepwyPJitFiw = await g.Description;
+    let qVdDnpcVdiWq = await (
+        await dao.User_SQLGet_Bd7kHUi4Twmz(ttnX9yihE78G)
+    ).Id;
+    await dao.Void_SQLGet_bTF8CdxVihHB(
+        FGyq4nA3L7XD,
+        v4G6miGn4CgWg,
+        hmFqHT7CdMiA,
+        aepwyPJitFiw,
+        qVdDnpcVdiWq
     );
 };
 
 export const removeGoods = async (gid) => {
-    await dao.void_SQLGet_v6RECeezrpT8w(gid);
+    await dao.Void_SQLGet_L7WrHngziLf6(gid);
 };
 
 export const updateGoods = async (gid, g) => {
-    let eEjmxnk3JP6e = g["Owner.Id"];
-    let TWXWTyKX33z3 = g.Name;
-    let fpbg8PgTKth8 = g.Price;
-    let FLFCzpnDbJTg = g.Stock;
-    await dao.void_SQLGet_v9NE9mPqQP7Qh(
-        TWXWTyKX33z3,
-        fpbg8PgTKth8,
-        FLFCzpnDbJTg,
-        eEjmxnk3JP6e,
+    let xmYF9HdApm9b = await g["Owner.Id"];
+    let Edat6G48XxaL = await g.Name;
+    let GTBe4pcXRq4g = await g.Price;
+    let NrAVjebMWGLp = await g.Stock;
+    let bakznm63pKBg = await g.Description;
+    let k9wxBDEgFeDt = await (
+        await dao.User_SQLGet_KY9LLnJ3xqaG(xmYF9HdApm9b)
+    ).Id;
+    await dao.Void_SQLGet_chcqbDBeC6Ei(
+        Edat6G48XxaL,
+        GTBe4pcXRq4g,
+        NrAVjebMWGLp,
+        bakznm63pKBg,
+        k9wxBDEgFeDt,
         gid
     );
 };
 
-export const newOrder = async (buyerId, gid, count) => {
-    let tm4yWbC948B4 = (await dao.Goods_SQLGet_cTnPPMa68KJB(gid)).Price * count;
-    await dao.void_SQLGet_R33Nz7tjVfqG(count, tm4yWbC948B4, buyerId, gid);
+export const newOrder = async (buyerId) => {
+    let DdjeFVcmmHgB = await (await dao.User_SQLGet_bdKUJtY8Nmzn(buyerId)).Id;
+    await dao.Void_SQLGet_EatQ6NWzdnpJ(DdjeFVcmmHgB);
 };
 
 export const removeOrder = async (oid) => {
-    await dao.void_SQLGet_jRJCAxkGw4hH(oid);
+    await dao.Void_SQLGet_ziMwmdwqyUxJ(oid);
 };
 
 export const getAllOrder = async () => {
-    return await dao.OrderArray_SQLGetTable_NcMb9jtTBGCr();
+    return await dao.OrderArray_SQLGetTable_EwKw76GbNLhp();
+};
+
+export const getOrderItems = async (oid) => {
+    return await dao.OrderItemArray_SQLGet_YMxTmLrqUMbq();
+};
+
+export const getOnesOrder = async (uid) => {
+    return await utils.asyncFilter(
+        await dao.OrderArray_SQLGetTable_eb8VinP4PHry(),
+        async (filter_CaajYEktRDEK) => {
+            return filter_CaajYEktRDEK["Buyer.Id"] === uid;
+        }
+    );
 };

@@ -175,23 +175,23 @@ let SQL_TABLE_TYPES = {
 const BASIC_TYPES = {
     Int: {
         kind: 'basic',
-        typename: 'int',
+        typename: 'Int',
     },
     String: {
         kind: 'basic',
-        typename: 'str',
+        typename: 'String',
     },
     Blob: {
         kind: 'basic',
-        typename: 'blob',
+        typename: 'Blob',
     },
     Bool: {
         kind: 'basic',
-        typename: 'bool',
+        typename: 'Blool',
     },
     Void: {
         kind: 'basic',
-        typename: 'void',
+        typename: 'Void',
     },
 };
 
@@ -578,6 +578,34 @@ const PARSER_TABLE = {
         validator: (target, p, r) => target.type.kind === 'array',
         processor: (target, p, r) => {
             return (val) => {
+                if (target.type.type.kind !== "object") {
+                    if (nativeTypeEqual(val, target.type.type)) {
+                        let e = createMultiChild(
+                            OPERATORS.APPEND,
+                            PLATFORMS.BOTH,
+                            BASIC_TYPES.Void,
+                            {
+                                left: target,
+                                right: createConst(PLATFORMS.BOTH, target.type.type, val)[RAW_DATA],
+                            }
+                        );
+                        effectExprs.push(e[RAW_DATA]);
+                        return;
+                    } else if (typeEqual(val[RAW_DATA].type, target.type.type)) {
+                        let e = createMultiChild(
+                            OPERATORS.APPEND,
+                            PLATFORMS.BOTH,
+                            BASIC_TYPES.Void,
+                            {
+                                left: target,
+                                right: val[RAW_DATA],
+                            }
+                        );
+                        effectExprs.push(e[RAW_DATA]);
+                        return;
+                    }
+                    TYPE_ERROR();
+                }
                 val = val[RAW_DATA];
                 if (typeEqual(val.type, target.type.type)) {
                     let e = createMultiChild(
@@ -613,6 +641,9 @@ const PARSER_TABLE = {
                         if (['basic', 'unit'].includes(target.type.type.member[m].kind) && obj[m] === undefined) {
                             TYPE_ERROR();
                         }
+                        if (target.type.type.member[m].kind === 'array') {
+                            continue;
+                        }
                         if (target.type.type.member[m].kind === 'object') {
                             // this is object, we need get pri id
                             if (
@@ -630,7 +661,7 @@ const PARSER_TABLE = {
                                 )
                             ) {
                                 let priK = obj[m][RAW_DATA].type.primaryMember;
-                                obj[`${m}.${priK}`] = obj[m][priK][RAW_DATA];
+                                obj[`${m}.${priK}`] = obj[m][priK].pin()[RAW_DATA];
                                 delete obj[m];
                             } else {
                                 TYPE_ERROR();
@@ -673,7 +704,7 @@ const PARSER_TABLE = {
     [OPERATORS.REMOVE]: {
         validator: (target, p, r) => {
             return (
-                (target.type.kind === 'array' && target.inf.globalTable) ||
+                target.type.kind === 'array' ||
                 target.type.kind === 'object'
             );
         },
@@ -693,13 +724,19 @@ const PARSER_TABLE = {
                 };
             } else {
                 return (fn) => {
+                    let nsql;
+                    if (target.inf.globalTable) {
+                        nsql = target.type.type.typename
+                            .split('.')
+                            .slice(1)
+                            .join('.')
+                    } else {
+                        nsql = "Value"
+                    }
                     let fnE = functionProcess(fn, [
                         createVar(PLATFORMS.BOTH, target.type.type, {
                             name: `remove_${nanoid()}`,
-                            nameForSql: target.type.type.typename
-                                .split('.')
-                                .slice(1)
-                                .join('.'),
+                            nameForSql: nsql,
                             kind: 'remove-iter',
                         }),
                     ]);
@@ -714,6 +751,7 @@ const PARSER_TABLE = {
                             },
                             {
                                 fromObject: false,
+                                globalTable: target.inf.globalTable
                             }
                         );
                         effectExprs.push(e[RAW_DATA]);
@@ -1418,7 +1456,9 @@ const CODE_GENERATORS = {
                 ctx.dependedFn.push({
                     fnBody: `const ${fnName} = async () => {
     let db = await dbPool.acquire();
-    return db.query(\`SELECT * FROM ${sqlIdentOfType(expr.type)}\`);
+    let ret = await db.query(\`SELECT * FROM ${sqlIdentOfType(expr.type)}\`);
+    dbPool.release(db);
+    return ret;
 }`,
                     daoKind: daoKindOfType(expr.type),
                 });
@@ -1599,7 +1639,7 @@ const CODE_GENERATORS = {
             return {
                 platform: PLATFORMS.HOST,
                 type: expr.type,
-                expr: `(${ele.expr}).filter(${ere.expr})`,
+                expr: `(await utils.asyncFilter((${ele.expr}), (${ere.expr})))`,
             };
         } else {
             let el = expr.valueObj.left;
@@ -2124,10 +2164,26 @@ const CODE_GENERATORS = {
                     platform: PLATFORMS.SQL,
                     type: expr.type,
                     sqlParams: [],
-                    expr: `SELECT "${resTableName}" FROM "${interTableName}", "${resTableName}" WHERE "${resTableName}"."${resTablePK}" == "${interTableName}"."${rightF}" AND "${interTableName}"."${leftF}" == (${sql.expr})`,
+                    expr: `SELECT * FROM "${resTableName}" WHERE "${resTableName}"."${resTablePK}" IN (SELECT "${interTableName}"."${rightF}" FROM "${interTableName}" WHERE "${interTableName}"."${leftF}" == (${sql.expr}))`,
                 };
             } else {
-                TODO();
+                let src = expr.value;
+                let myTableName = src.type.typename;
+                let memberName = expr.inf.memberName;
+                let valuetype = expr.type.type.alias.typename;
+                let interTableName = `${myTableName}-${memberName}-${valuetype}`;
+                let myTablePK = src.type.primaryMember;
+                let leftF = `${myTableName}.${myTablePK}`;
+
+                let sqlE = new Proxy(src, PROXY_HANDLER)[myTablePK][RAW_DATA];
+                let sql = CODE_GENERATORS[sqlE.tag](ctx, sqlE, PLATFORMS.SQL);
+
+                return {
+                    platform: PLATFORMS.SQL,
+                    type: expr.type,
+                    sqlParams: sql.sqlParams,
+                    expr: `SELECT "Value" FROM "${interTableName}" WHERE "${interTableName}"."${leftF}" == (${sql.expr})`,
+                };
             }
         } else {
             return null;
@@ -3206,7 +3262,7 @@ const CODE_GENERATORS = {
             return {
                 platform: PLATFORMS.HOST,
                 type: expr.type,
-                expr: `(async () => {if (${ce.expr}) {
+                expr: `await (async () => {if (${ce.expr}) {
                     return (${bte.expr})();
                 } else { 
                     return (${bfe.expr})(); 
@@ -3230,6 +3286,33 @@ const CODE_GENERATORS = {
 
         let target = expr.valueObj.right;
         let src = expr.valueObj.left;
+
+        if (src.type.type.kind !== "object") {
+            let rS = CODE_GENERATORS[target.tag](ctx, target, PLATFORMS.SQL);
+            if (rS === null) {
+                return null;
+            }
+            let tt = src.type.type;
+            let interTableName = `${tt.typename.split('.')[0].trim()}-${tt.typename.split('.').slice(1).join('.').trim()}-${tt.alias.typename.trim()}`
+
+            assert(src.tag === OPERATORS.ARRAY_MEMBER_ACCESS);
+            src = src.value;
+            let tblN = src.type.typename;
+            let priK = src.type.primaryMember;
+            src = (new Proxy(src, PROXY_HANDLER))[priK].pin()[RAW_DATA];
+            let sss = CODE_GENERATORS[src.tag](ctx, src, PLATFORMS.SQL);
+            if (sss === null) {
+                return sss;
+            }
+
+            return {
+                platform: PLATFORMS.SQL,
+                sqlParams: UTILS.uniqueArray([...(rS.sqlParams ?? []), ...(sss.sqlParams ?? [])]),
+                type: BASIC_TYPES.Void,
+                expr: `INSERT INTO "${interTableName}" ("${tblN}.${priK}", "Value") VALUES ((${sss.expr}), (${rS.expr}))`
+            }
+        }
+
         if (target.tag === OPERATORS.NEW) {
             let members = Object.keys(target.valueObj);
             let sqlParams = [];
@@ -3331,9 +3414,9 @@ const CODE_GENERATORS = {
                     platform: PLATFORMS.SQL,
                     sqlParams: UTILS.uniqueArray(sqlParams),
                     type: BASIC_TYPES.Void,
-                    expr: `UPDATE ${srcTableName} SET (${Object.keys(obj)
+                    expr: `UPDATE ${srcTableName} SET ${Object.keys(obj)
                         .map((m) => `"${m}" = (${obj[m].expr})`)
-                        .join(', ')}) WHERE "${tableName}"."${tablePriMem}" == (${lps.expr})`,
+                        .join(', ')} WHERE "${tableName}"."${tablePriMem}" == (${lps.expr})`,
                 };
             } else {
                 let srcTableName = src.type.typename;
@@ -3406,21 +3489,53 @@ const CODE_GENERATORS = {
 
         if (expr.inf.fromObject) {
         } else {
-            let el = expr.valueObj.left;
-            let er = expr.valueObj.right;
+            if (expr.inf.globalTable) {
+                let el = expr.valueObj.left;
+                let er = expr.valueObj.right;
 
-            let ere = CODE_GENERATORS[er.tag](ctx, er, PLATFORMS.SQL);
+                let ere = CODE_GENERATORS[er.tag](ctx, er, PLATFORMS.SQL);
 
-            if (ere === null) {
-                return null;
+                if (ere === null) {
+                    return null;
+                }
+                let tblName = el.type.type.typename;
+                return {
+                    sqlParams: ere.sqlParams,
+                    platform: PLATFORMS.SQL,
+                    type: expr.type,
+                    expr: `DELETE FROM "${tblName}" WHERE (${ere.expr})`,
+                };
+            } else {
+                let tt = expr.valueObj.left.type.type;
+                let interTableName = `${tt.typename.split('.')[0].trim()}-${tt.typename.split('.').slice(1).join('.').trim()}-${tt.alias.typename.trim()}`
+                let rTable = tt.typename.split('.')[0].trim()
+                let prik = SQL_TABLE_TYPES[rTable].primaryMember
+                let er = expr.valueObj.right;
+
+                let ere = CODE_GENERATORS[er.tag](ctx, er, PLATFORMS.SQL);
+
+                if (ere === null) {
+                    return null;
+                }
+
+                let src = expr.valueObj.left;
+                assert(src.tag === OPERATORS.ARRAY_MEMBER_ACCESS);
+                src = src.value;
+                let tblN = src.type.typename;
+                let priK = src.type.primaryMember;
+                src = (new Proxy(src, PROXY_HANDLER))[priK].pin()[RAW_DATA];
+                let sss = CODE_GENERATORS[src.tag](ctx, src, PLATFORMS.SQL);
+                if (sss === null) {
+                    return sss;
+                }
+
+                return {
+                    sqlParams: UTILS.uniqueArray([...(ere.sqlParams ?? []), ...(sss.sqlParams ?? [])]),
+                    platform: PLATFORMS.SQL,
+                    type: expr.type,
+                    expr: `DELETE FROM "${interTableName}" WHERE (${ere.expr}) AND ("${interTableName}"."${rTable}.${prik}") == (${sss.expr})`,
+                };
             }
-            let tblName = el.type.type.typename;
-            return {
-                sqlParams: ere.sqlParams,
-                platform: PLATFORMS.SQL,
-                type: expr.type,
-                expr: `DELETE FROM "${tblName}" WHERE (${ere.expr})`,
-            };
         }
     },
     [OPERATORS.NEW]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
@@ -3473,7 +3588,9 @@ const CODE_GENERATORS = {
             fnBody: `const ${fnName} = async (${sql.sqlParams.join(', ')}) => {
     const db = await dbPool.acquire();
     const sql = \`${formatSqlExpr}\`;
-    return db.${queryFn}(sql${params});
+    let ret = await db.${queryFn}(sql${params});
+    dbPool.release(db);
+    return ret;
 }`,
             daoKind: daoKindOfType(sql.type),
         });
@@ -3633,7 +3750,7 @@ const CODE_GENERATORS = {
         return {
             platform: PLATFORMS.HOST,
             type: expr.type,
-            expr: `${fnName}(${argsE.map((a) => `(${a.expr})`).join(',')})`,
+            expr: `await ${fnName}(${argsE.map((a) => `(${a.expr})`).join(',')})`,
         };
     },
     [OPERATORS.PIN]: (ctx, expr, platformRequire = PLATFORMS.BOTH) => {
@@ -3660,7 +3777,7 @@ const CODE_GENERATORS = {
         return {
             platform: PLATFORMS.HOST,
             type: expr.type,
-            expr: `let ${varName} = (${h.expr})`,
+            expr: `let ${varName} = await (${h.expr})`,
         };
     },
 };
@@ -3905,8 +4022,8 @@ if (process.argv.length > 2) {
     writeFileSync(serviceOut, UTILS.formatCode(service));
 } else {
     integrateTest(`
-    fn updateGoods(gid: Goods.Id, g: Goods) {
-        gid.Goods.set(g)
+    fn getOrderItems(oid: Order.Id) -> [OrderItem] {
+        return oid.Order.Items
     }
 `);
 }

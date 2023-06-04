@@ -1,4 +1,4 @@
 {
-    "dbPath": "db2.sqlite",
+    "dbPath": "db.sqlite",
     "createTableSql": ""
 }

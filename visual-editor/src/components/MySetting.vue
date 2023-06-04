@@ -31,13 +31,13 @@
     </template>
   </n-form>
   <div style="display: flex; justify-content: flex-end">
-    <n-button type="primary" @click="showModal = true"> 导出 DSL 代码 </n-button>
+    <n-button type="primary" @click="genDSL"> 导出 DSL 代码 </n-button>
   </div>
   <n-modal v-model:show="showModal">
     <n-card style="width: 1000px;" title="DSL 代码" :bordered="false" size="huge" role="dialog" aria-modal="true">
       <pre style="font-family: 'Cascadia Code', monospace; overflow-y: scroll; height: 70vh;">{{ content }}</pre>
       <div style="display: flex; justify-content: flex-end">
-        <n-button>复制</n-button>
+        <n-button @click="copyDSL">复制</n-button>
       </div>
     </n-card>
   </n-modal>
@@ -64,6 +64,7 @@ import {
 import {
   SETTING_FORM,
   DEFAULT_SETTING,
+  genDSLFromCfg
 } from "../global";
 
 export default defineComponent({
@@ -93,108 +94,22 @@ export default defineComponent({
       saving: false,
       SETTING_FORM,
       setting: DEFAULT_SETTING,
-      content: `
-entity Permission {
-    User: User,
-    Level: Int
-}
-
-entity User {
-    UserName: @String,
-    PassWord: String
-}
-
-entity Token {
-    ForUser: User,
-    Token: @String
-}
-
-entity Goods {
-    Owner: User
-    Name: String,
-    Price: Int,
-    Stock: Int
-}
-
-entity Order {
-    Buyer: User
-    Good: Goods,
-    Count: Int,
-    TotalPrice: Int
-}
-
-fn permissionCheck(uid: User.Id, requireLevel: Int) -> Bool {
-    return Permission.filter(u => u.User.Id.eq(uid)).first().Level.ge(requireLevel)
-}
-
-fn setPermissLevel(uid: User.Id, level: Int) {
-    let p = Permission.filter(p => p.User.Id.eq(User.Id))
-    let cnt = p.count()
-    cnt.eq(0).cond(() => {
-        Permission.append(Permission.new({
-            User: uid.User,
-            Level: level
-        }))
-    }, () => {
-        p.first().Level.set(level)
-    })
-}
-
-fn signup(u: User) {
-    User.append(u)
-}
-
-fn signdown(uid: User.Id) {
-    User.remove(u => u.Id.eq(uid))
-}
-
-fn uuid() -> String
-
-fn login(name: User.UserName, pw: User.PassWord) -> Token.Token {
-    name.User.PassWord.eq(pw).assert("用户名或密码不正确")
-
-    let newTok = uuid()
-    Token.append(Token.new({
-        ForUser: name.User,
-        Token: newTok
-    }))
-    return newTok
-}
-
-fn logout(tok: Token.Token) {
-    Token.remove(t => t.Token.eq(tok))
-}
-
-fn tokenToUser(tok: Token.Token) -> User {
-    return tok.Token.ForUser
-}
-
-fn newGoods(g: Goods) {
-    Goods.append(g)
-}
-
-fn removeGoods(gid: Goods.Id) {
-    Goods.remove(g => g.Id.eq(gid))
-}
-
-fn updateGoods(gid: Goods.Id, g: Goods) {
-    gid.Goods.set(g)
-}
-
-fn newOrder(buyerId: User.Id, gid: Goods, count: Int) {
-    Order.append(Order.new({
-        Buyer: buyerId.User,
-        Good: gid.Goods,
-        Count: count,
-        Price: gid.Goods.Price.mul(count)
-    }))
-}
-
-fn removeOrder(oid: Order.Id) {
-    Order.remove(o => o.Id.eq(oid))
-}
-      `
+      content: ""
     };
+  },
+  methods: {
+    genDSL() {
+      this.content = genDSLFromCfg(this.setting)
+      this.showModal = true
+    },
+    async copyDSL() {
+      try {
+        await navigator.clipboard.writeText(this.content);
+        this.message.info("复制成功")
+      } catch (err) {
+        this.message.error(`复制失败: ${err.message}`)
+      }
+    }
   }
 });
 </script>

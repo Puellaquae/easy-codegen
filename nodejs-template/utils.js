@@ -30,4 +30,9 @@ const { nolookalikes } = nanoidDictionary;
 import { customAlphabet } from 'nanoid';
 const uuid = customAlphabet(nolookalikes, 12);
 
-export { like, sum, uuid };
+const asyncFilter = async (arr, predicate) =>
+    arr.reduce(async (memo, e) =>
+        await predicate(e) ? [...await memo, e] : memo
+        , []);
+
+export { like, sum, uuid, asyncFilter };

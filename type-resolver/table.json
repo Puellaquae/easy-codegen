@@ -3,7 +3,9 @@
         "kind": "object",
         "primaryMember": "Id",
         "primaryAuto": true,
-        "uniqueMember": ["Id"],
+        "uniqueMember": [
+            "Id"
+        ],
         "typename": "Permission",
         "member": {
             "User": {
@@ -26,7 +28,10 @@
         "kind": "object",
         "primaryMember": "Id",
         "primaryAuto": true,
-        "uniqueMember": ["UserName", "Id"],
+        "uniqueMember": [
+            "UserName",
+            "Id"
+        ],
         "typename": "User",
         "member": {
             "UserName": {
@@ -39,6 +44,11 @@
                 "typename": "User.PassWord",
                 "alias": "String"
             },
+            "Age": {
+                "kind": "unit",
+                "typename": "User.Age",
+                "alias": "Int"
+            },
             "Id": {
                 "kind": "unit",
                 "typename": "User.Id",
@@ -50,7 +60,10 @@
         "kind": "object",
         "primaryMember": "Id",
         "primaryAuto": true,
-        "uniqueMember": ["Token", "Id"],
+        "uniqueMember": [
+            "Token",
+            "Id"
+        ],
         "typename": "Token",
         "member": {
             "ForUser": {
@@ -73,7 +86,9 @@
         "kind": "object",
         "primaryMember": "Id",
         "primaryAuto": true,
-        "uniqueMember": ["Id"],
+        "uniqueMember": [
+            "Id"
+        ],
         "typename": "Goods",
         "member": {
             "Owner": {
@@ -95,9 +110,39 @@
                 "typename": "Goods.Stock",
                 "alias": "Int"
             },
+            "Description": {
+                "kind": "unit",
+                "typename": "Goods.Description",
+                "alias": "String"
+            },
             "Id": {
                 "kind": "unit",
                 "typename": "Goods.Id",
+                "alias": "Int"
+            }
+        }
+    },
+    "OrderItem": {
+        "kind": "object",
+        "primaryMember": "Id",
+        "primaryAuto": true,
+        "uniqueMember": [
+            "Id"
+        ],
+        "typename": "OrderItem",
+        "member": {
+            "Goods": {
+                "kind": "unit",
+                "typename": "Goods"
+            },
+            "Count": {
+                "kind": "unit",
+                "typename": "OrderItem.Count",
+                "alias": "Int"
+            },
+            "Id": {
+                "kind": "unit",
+                "typename": "OrderItem.Id",
                 "alias": "Int"
             }
         }
@@ -106,21 +151,21 @@
         "kind": "object",
         "primaryMember": "Id",
         "primaryAuto": true,
-        "uniqueMember": ["Id"],
+        "uniqueMember": [
+            "Id"
+        ],
         "typename": "Order",
         "member": {
             "Buyer": {
                 "kind": "unit",
                 "typename": "User"
             },
-            "Good": {
-                "kind": "unit",
-                "typename": "Goods"
-            },
-            "Count": {
-                "kind": "unit",
-                "typename": "Order.Count",
-                "alias": "Int"
+            "Items": {
+                "kind": "array",
+                "type": {
+                    "kind": "unit",
+                    "typename": "OrderItem"
+                }
             },
             "TotalPrice": {
                 "kind": "unit",
