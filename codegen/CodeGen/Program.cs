@@ -58,26 +58,26 @@ internal class Program
 
         Database database = new(rawTable);
 
-        Console.WriteLine("Generate SQL Table Create Script");
+        //Console.WriteLine("Generate SQL Table Create Script");
         StringBuilder sb = new();
         foreach (Table table in database.tables)
         {
             sb.Append($"{table.GenerateSQL()}\n");
-            Console.Write($"{table.GenerateSQL()}\n");
+            //Console.Write($"{table.GenerateSQL()}\n");
         }
 
         File.WriteAllText(sqlOutFile, sb.ToString());
 
-        Console.WriteLine("Types:");
-        Console.WriteLine(string.Join("\n", database.GetTypes()));
-        Console.WriteLine("TypeAlias:");
-        Console.WriteLine(string.Join("\n", database.GetTypeAlias().Select((kv) => $"{kv.Key} => {kv.Value}")));
+        //Console.WriteLine("Types:");
+        //Console.WriteLine(string.Join("\n", database.GetTypes()));
+        //Console.WriteLine("TypeAlias:");
+        //Console.WriteLine(string.Join("\n", database.GetTypeAlias().Select((kv) => $"{kv.Key} => {kv.Value}")));
 
-        Console.WriteLine("\nTypeFnSigns:");
-        var fns = database.GetFnSigns();
-        Console.WriteLine(string.Join("\n", fns.Select((kv) => $"{kv.Key.Item1} = {string.Join(" -> ", kv.Key.Item2)} -> {kv.Value}")));
+        //Console.WriteLine("\nTypeFnSigns:");
+        //var fns = database.GetFnSigns();
+        //Console.WriteLine(string.Join("\n", fns.Select((kv) => $"{kv.Key.Item1} = {string.Join(" -> ", kv.Key.Item2)} -> {kv.Value}")));
 
-        Console.WriteLine("\nTypeFns:");
+        /*Console.WriteLine("\nTypeFns:");
         var fnss = database.GetFns();
         foreach (var fn in fnss)
         {
@@ -97,7 +97,7 @@ internal class Program
             Console.WriteLine(texpr);
         }
 
-        Console.WriteLine(database.GenJSTypeDef());
+        Console.WriteLine(database.GenJSTypeDef());*/
         File.WriteAllText(infOutFile, $"{{{database.GenJSTypeDef()}}}");
     }
 }
